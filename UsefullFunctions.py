@@ -37,15 +37,17 @@ def frates_labels(iterations):
             right_values[i] = -1
         else:
             right_values[i] = 1
+        
         if  stimuli[i,2]*stimuli[i,3] <= 1:
             left_values[i] = -1
         else:
             left_values[i] = 1
+        
         if global_values[i] <= 1:
             global_values[i] = -1
         else:
             global_values[i] = 1
-            
+
     array1_list = frates_actor[:, 1:].T.tolist()
     array2_list = frates_critic[:, 1:].T.tolist()
     array3_list = final_actions[1:].tolist()
@@ -71,111 +73,144 @@ def frates_labels(iterations):
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 
-def rel_nurons(X, Y, model, C, network, label):
+def rel_nurons(X, Y, model, C, network, label, noise_mag=0):
     
     saving_path = 'clf_data/'+label
     if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-    
+            
     model = model
-        
+            
     if model == 'perceptronL1':
         C_perc = C
     elif model == 'svm':
         C_svm = C
-            
-    nb_epochs = 10
-
-    test_scores = np.zeros(nb_epochs)
+        
+    original_X = X
+    mean = np.mean(X)
+    list_test_scores = []
+    average_test_scores = []
+    list_test_random_scores = []
     
-    nb_trials = X.shape[0]
-    percentage_training_set = 0.8
-    nb_indeces_training = int(nb_trials*percentage_training_set)
-    
-    for i in range(nb_epochs):
+    for k in range(len(noise_mag)):
         
-        all_indeces = np.arange(0, nb_trials)
-        
-        if i == 0:
-            indeces_train = all_indeces[0:nb_indeces_training]
-            indeces_test = all_indeces[nb_indeces_training:]
-        else:
-            np.random.shuffle(all_indeces)
-            indeces_train = all_indeces[0:nb_indeces_training]
-            indeces_test = all_indeces[nb_indeces_training:]
-    
-        X_train_trial = X[indeces_train,:]
-        Y_train_trial = Y[indeces_train]
-        X_test_trial = X[indeces_test,:]
-        Y_test_trial = Y[indeces_test]
-        
-        if model=='perceptron':
-            clf = Perceptron(tol=1e-3, random_state=0)
-        elif model == 'perceptronL1':
-            clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
-        elif model == 'svm':
-            clf = svm.LinearSVC(penalty='l1', C=C_svm, dual = False, max_iter=1000)
-    
-        clf.fit(X_train_trial, Y_train_trial)
-        training_score = clf.score(X_train_trial, Y_train_trial)
-        test_score = clf.score(X_test_trial, Y_test_trial)
-    
-        test_scores[i] = test_score
-    
-    #----------------------------------------------------------------------------------------#
-
-    test_random_scores = np.zeros(nb_epochs)
-
-    for i in range(nb_epochs):
-        
-        all_indeces = np.arange(0, nb_trials)
-        
-        if i == 0:
-            indeces_train = all_indeces[0:nb_indeces_training]
-            indeces_test = all_indeces[nb_indeces_training:]
-        else:
-            np.random.shuffle(all_indeces)
-            indeces_train = all_indeces[0:nb_indeces_training]
-            indeces_test = all_indeces[nb_indeces_training:]
-    
-        X_train_trial = X[indeces_train,:]
-        Y_train_trial = Y[indeces_train]
-        X_test_trial = X[indeces_test,:]
-        #Y_test_trial = Y[indeces_test]
-        #Y_train_trial = 2*np.random.binomial(size=497, n=1, p=0.5)-1
-        Y_test_trial = 2*np.random.binomial(size=200, n=1, p=0.5)-1 ##before size was 40?!?
-        
-        if model=='perceptron':
-            clf = Perceptron(tol=1e-3, random_state=0)
-        elif model == 'perceptronL1':
-            clf == Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
-        elif model == 'svm':
-            clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
-        
-        clf.fit(X_train_trial, Y_train_trial)
-        training_score = clf.score(X_train_trial, Y_train_trial)
-        test_score = clf.score(X_test_trial, Y_test_trial)
-        
-        test_random_scores[i] = test_score
+        X = original_X
+        std = mean * noise_mag[k]
+        noise = np.random.normal(0, std, X.shape)
+        X += noise
                 
-    plt.figure(figsize=(6,4))
-    plt.hist(test_scores, label="test scores")
-    plt.hist(test_random_scores, label="test random scores")
-    plt.xticks(size=15)
-    plt.yticks(size=15)
-    plt.legend(fontsize=15, loc="upper left")
-    plt.title(network+" network / "+label+ " test scores", fontsize=20);
+        nb_epochs = 10
+    
+        test_scores = np.zeros(nb_epochs)
+        
+        nb_trials = X.shape[0]
+        percentage_training_set = 0.8
+        nb_indeces_training = int(nb_trials*percentage_training_set)
+        
+        for i in range(nb_epochs):
+            
+            all_indeces = np.arange(0, nb_trials)
+            
+            if i == 0:
+                indeces_train = all_indeces[0:nb_indeces_training]
+                indeces_test = all_indeces[nb_indeces_training:]
+            else:
+                np.random.shuffle(all_indeces)
+                indeces_train = all_indeces[0:nb_indeces_training]
+                indeces_test = all_indeces[nb_indeces_training:]
+        
+            X_train_trial = X[indeces_train,:]
+            Y_train_trial = Y[indeces_train]
+            X_test_trial = X[indeces_test,:]
+            Y_test_trial = Y[indeces_test]
+            
+            if model=='perceptron':
+                clf = Perceptron(tol=1e-3, random_state=0)
+            elif model == 'perceptronL1':
+                clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
+            elif model == 'svm':
+                clf = svm.LinearSVC(penalty='l1', C=C_svm, dual = False, max_iter=1000)
+        
+            clf.fit(X_train_trial, Y_train_trial)
+            test_score = clf.score(X_test_trial, Y_test_trial)
+        
+            test_scores[i] = test_score
+            
+        list_test_scores.append(test_scores)
+        average_test_scores.append(np.mean(test_scores))
+        
+        #----------------------------------------------------------------------------------------#
+    
+        test_random_scores = np.zeros(nb_epochs)
+    
+        for i in range(nb_epochs):
+            
+            all_indeces = np.arange(0, nb_trials)
+            
+            if i == 0:
+                indeces_train = all_indeces[0:nb_indeces_training]
+                indeces_test = all_indeces[nb_indeces_training:]
+            else:
+                np.random.shuffle(all_indeces)
+                indeces_train = all_indeces[0:nb_indeces_training]
+                indeces_test = all_indeces[nb_indeces_training:]
+        
+            X_train_trial = X[indeces_train,:]
+            Y_train_trial = Y[indeces_train]
+            X_test_trial = X[indeces_test,:]
+            Y_test_trial = 2*np.random.binomial(size=200, n=1, p=0.5)-1 
+            
+            if model=='perceptron':
+                clf = Perceptron(tol=1e-3, random_state=0)
+            elif model == 'perceptronL1':
+                clf == Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
+            elif model == 'svm':
+                clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
+            
+            clf.fit(X_train_trial, Y_train_trial)
+            test_score = clf.score(X_test_trial, Y_test_trial)
+            
+            test_random_scores[i] = test_score
+            
+        list_test_random_scores.append(test_random_scores)
+        
+        print("average over 10 epochs of test scores: %.3f" %(np.mean(test_scores)))
+        print("average over 10 epochs of test random scores: %.3f" %(np.mean(test_random_scores)))        
+     
+    fig, axx = plt.subplots(len(noise_mag), 1, figsize=(6, 20))
+    axx = axx.reshape(-1)
+    for i, ax in enumerate(axx):
+        bin_edges = np.linspace(0.2, 1, 50)
+        ax.hist(list_test_scores[i], bins=bin_edges, label="test scores", edgecolor="k")
+        ax.hist(list_test_random_scores[i], bins=bin_edges, label="test random scores", edgecolor="k")
+        ax.set_title("noise: %.2f$\mu$" %(noise_mag[i]), fontsize=15)
+        ax.tick_params(axis='x', labelsize=15)
+        ax.tick_params(axis='y', labelsize=15)
+        ax.set_xlabel("mean accuracy", size=15)
+        ax.set_ylabel("occurences", size=15)
+        ax.legend(fontsize=15, loc="upper left")
+    plt.tight_layout()      
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle("test scores for the "+network+" network on "+label+\
+                 "\n(average neuronal activity $\mu$=%.2f)" %(mean), fontsize=20)
     plt.savefig('clf_data/'+label+'/hist: '+network+' - '+label+'.png')
     
-    print("average over 10 epochs of test scores: ", np.mean(test_scores))
-    print("average over 10 epochs of test random scores: ", np.mean(test_random_scores))   
-
+    plt.figure(figsize=(10,5))
+    plt.plot(noise_mag, average_test_scores, "-^", markersize=10)
+    plt.title("mean test scores over noise magnitude for the "+network+" network on "+label, fontsize=20)
+    plt.xticks(size=15)
+    plt.yticks(size=15)
+    plt.xlabel("noise magnitude [$\mu$/$\mu_0$]", size=15)
+    plt.ylabel("mean test score", size=15)
+    plt.savefig(saving_path+'/'+network+' network mean test scores.png')      
+    
     #----------------------------------------------------------------------------------------#
 
     all_indeces = np.arange(0, nb_trials)
     np.random.shuffle(all_indeces)
     indeces_train = all_indeces[0:nb_indeces_training]
     indeces_test = all_indeces[nb_indeces_training:]
+    X = original_X
     X_train_trial = X[indeces_train,:]
     Y_train_trial = Y[indeces_train]
     X_test_trial = X[indeces_test,:]
@@ -191,8 +226,8 @@ def rel_nurons(X, Y, model, C, network, label):
     clf.fit(X_train_trial, Y_train_trial)
     training_score = clf.score(X_train_trial, Y_train_trial)
     test_score = clf.score(X_test_trial, Y_test_trial)
-    print("----------\ntraining score: ", training_score)
-    print("test score: ", test_score, "\n----------")
+    print("----------\ntraining score: %.3f" %(training_score))
+    print("test score: %.3f" %(test_score), "\n----------")
     
     w = clf.coef_
     b = clf.intercept_
