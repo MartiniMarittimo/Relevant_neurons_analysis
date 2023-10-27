@@ -5,6 +5,7 @@ import os
 import numpy as np
 from sklearn import svm
 from sklearn.linear_model import Perceptron
+import copy
 
 import matplotlib.pyplot as plt
 import matplotlib 
@@ -27,12 +28,18 @@ def frates_labels(iterations):
     observations, rewards, actions,\
     log_action_probs, entropies, values,\
     trial_begins, errors, frates_actor, frates_critic,\
-    timeav_values, final_actions, global_values, stimuli = reinforce.experience(iterations)
+    timeav_values, final_actions, overall_values, stimuli = reinforce.experience(iterations)
     
-    right_values = np.zeros(len(global_values))
-    left_values = np.zeros(len(global_values))
-
+    right_values = np.zeros(len(overall_values))
+    left_values = np.zeros(len(overall_values))
+    global_values = copy.deepcopy(overall_values)
+    
     for i in range (len(global_values)):
+        if  stimuli[i,0]*stimuli[i,1] < stimuli[i,2]*stimuli[i,3]:
+            final_actions[i] = -1
+        elif stimuli[i,0]*stimuli[i,1] > stimuli[i,2]*stimuli[i,3]:
+            final_actions[i] = 1
+        
         if  stimuli[i,0]*stimuli[i,1] <= 1:
             right_values[i] = -1
         else:
@@ -47,14 +54,16 @@ def frates_labels(iterations):
             global_values[i] = -1
         else:
             global_values[i] = 1
-
+    
     array1_list = frates_actor[:, 1:].T.tolist()
     array2_list = frates_critic[:, 1:].T.tolist()
     array3_list = final_actions[1:].tolist()
     array4_list = right_values[1:].tolist()
     array5_list = left_values[1:].tolist()
-    array6_list = global_values[1:].tolist()
-    array7_list = stimuli[1:].tolist()
+    array6_list = overall_values[1:].tolist()
+    array7_list = global_values[1:].tolist()
+    array8_list = stimuli[1:].tolist()
+    array9_list = timeav_values[1:].tolist()
     
     data = {
         "frates_actor": array1_list,
@@ -62,8 +71,10 @@ def frates_labels(iterations):
         "final_actions": array3_list,
         "right_values": array4_list,
         "left_values": array5_list,
-        "global_values": array6_list,    
-        "stimuli": array7_list
+        "overall_values": array6_list,
+        "global_values": array7_list,    
+        "stimuli": array8_list,
+        "timeav_values": array9_list
     }
     
     with open('frates_labels.json', 'w') as json_file:
@@ -73,7 +84,7 @@ def frates_labels(iterations):
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 
-def rel_nurons(X, Y, model, C, network, label, noise_mag=0):
+def best_noise(X, Y, model, C, network, label, noise_mag=0):
     
     saving_path = 'clf_data/'+label
     if not os.path.exists(saving_path):
@@ -86,20 +97,20 @@ def rel_nurons(X, Y, model, C, network, label, noise_mag=0):
     elif model == 'svm':
         C_svm = C
         
-    original_X = X
-    mean = np.mean(X)
+    original_X = copy.deepcopy(X)
+    mean = np.mean(original_X)
     list_test_scores = []
     average_test_scores = []
     list_test_random_scores = []
     
     for k in range(len(noise_mag)):
         
-        X = original_X
+        X = copy.deepcopy(original_X)
         std = mean * noise_mag[k]
         noise = np.random.normal(0, std, X.shape)
         X += noise
                 
-        nb_epochs = 10
+        nb_epochs = 20
     
         test_scores = np.zeros(nb_epochs)
         
@@ -190,27 +201,52 @@ def rel_nurons(X, Y, model, C, network, label, noise_mag=0):
         ax.set_ylabel("occurences", size=15)
         ax.legend(fontsize=15, loc="upper left")
     plt.tight_layout()      
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle("test scores for the "+network+" network on "+label+\
+    plt.tight_layout(rect=[0, 0.03, 1, 0.93])
+    plt.suptitle("Test scores\n"+network+" network on "+label+\
                  "\n(average neuronal activity $\mu$=%.2f)" %(mean), fontsize=20)
     plt.savefig('clf_data/'+label+'/hist: '+network+' - '+label+'.png')
     
     plt.figure(figsize=(10,5))
     plt.plot(noise_mag, average_test_scores, "-^", markersize=10)
-    plt.title("mean test scores over noise magnitude for the "+network+" network on "+label, fontsize=20)
+    for i in range(len(noise_mag)):
+        plt.text(noise_mag[i]+0.02, average_test_scores[i], "%.2f" %(average_test_scores[i]), fontsize=10)
+    plt.title("Mean test scores over noise magnitude\n"+network+" network on "+label, fontsize=20)
     plt.xticks(size=15)
     plt.yticks(size=15)
-    plt.xlabel("noise magnitude [$\mu$/$\mu_0$]", size=15)
+    plt.xlabel("noise magnitude [$\mu$]", size=15)
     plt.ylabel("mean test score", size=15)
-    plt.savefig(saving_path+'/'+network+' network mean test scores.png')      
-    
-    #----------------------------------------------------------------------------------------#
+    plt.savefig(saving_path+'/'+network+' network mean test scores.png')
 
+#############################################################################################################
+#============================================================================================================    
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    
+def rel_neurons(X, Y, model, C, network, label, noise_mag=0):
+
+    saving_path = 'clf_data/'+label
+    if not os.path.exists(saving_path):
+            os.makedirs(saving_path)
+            
+    model = model
+            
+    if model == 'perceptronL1':
+        C_perc = C
+    elif model == 'svm':
+        C_svm = C
+    
+    mean = np.mean(X)
+    std = mean * noise_mag
+    noise = np.random.normal(0, std, X.shape)
+    X += noise
+    
+    nb_trials = X.shape[0]
+    percentage_training_set = 0.8
+    nb_indeces_training = int(nb_trials*percentage_training_set)
     all_indeces = np.arange(0, nb_trials)
     np.random.shuffle(all_indeces)
+    
     indeces_train = all_indeces[0:nb_indeces_training]
     indeces_test = all_indeces[nb_indeces_training:]
-    X = original_X
     X_train_trial = X[indeces_train,:]
     Y_train_trial = Y[indeces_train]
     X_test_trial = X[indeces_test,:]
@@ -219,7 +255,7 @@ def rel_nurons(X, Y, model, C, network, label, noise_mag=0):
     if model=='perceptron':
         clf = Perceptron(tol=1e-3, random_state=0)
     elif model == 'perceptronL1':
-        clf == Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
+        clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
     elif model == 'svm':
         clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
         
@@ -232,42 +268,63 @@ def rel_nurons(X, Y, model, C, network, label, noise_mag=0):
     w = clf.coef_
     b = clf.intercept_
     
-    df = pd.DataFrame(w[0,:])
-    df.to_csv("clf_data/"+label+"/perceptron_wo_"+network+".csv", index=False)
-     
     relevant_neurons = []
     relevant_neurons_values = []
+    relevant_neurons_values_abs = []
     plt.figure(figsize=(15,7))
     plt.plot(w[0,:])
     for i in range(len(w[0,:])):
         if w[0,i] != 0:
-            plt.text(i, w[0,i], str(i), style='italic', fontsize=15)
-            relevant_neurons_values.append(np.abs(w[0,i]))
+            plt.text(i, w[0,i], "(%i, %.3f)" %(i, w[0,i]), style='italic', fontsize=15)
+            relevant_neurons_values.append(w[0,i])
+            relevant_neurons_values_abs.append(np.abs(w[0,i]))
             relevant_neurons.append(i)
     plt.title(network+" network relevant neurons for "+label, fontsize=20);
     plt.xticks(size=15)
     plt.yticks(size=15)
     
-    sorted_pairs = sorted(zip(relevant_neurons_values, relevant_neurons))
+    relevant_size = 10
+    sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons))
     relevant_neurons = [pair[1] for pair in sorted_pairs]
     relevant_neurons.reverse()
-    relevant_size = 10
     relevant_neurons = relevant_neurons[:relevant_size]
+    sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons_values))
+    relevant_neurons_values = [pair[1] for pair in sorted_pairs]
+    relevant_neurons_values.reverse()
+    relevant_neurons_values = relevant_neurons_values[:relevant_size]
+    
+    check = True
+    random_neurons = np.zeros(len(relevant_neurons))
+    while check is True:
+        random_neurons = np.random.randint(0, 128, 10)
+        bool_array = np.isin(random_neurons, relevant_neurons)
+        check = any(bool_array)
+    random_weights = w[0, random_neurons]
+    
+    array1_list = np.asarray(relevant_neurons).tolist()
+    array2_list = np.asarray(relevant_neurons_values).tolist()
+    array3_list = random_neurons.tolist()
+    array4_list = random_weights.tolist()
+    
+    data = {
+        "relevant_neurons": array1_list,
+        "relevant_weights": array2_list,
+        "random_neurons": array3_list,
+        "random_weights": array4_list
+    }
     
     if network == "actor":
-        with open('clf_data/'+label+'/relevant_neurons_actor.txt', 'w') as f:
-            with redirect_stdout(f):
-                print(relevant_neurons)
+        with open('clf_data/'+label+'/relevant_neurons_actor.json', 'w') as json_file:
+            json.dump(data, json_file)
     else:
-        with open('clf_data/'+label+'/relevant_neurons_critic.txt', 'w') as f:
-            with redirect_stdout(f):
-                print(relevant_neurons)    
+        with open('clf_data/'+label+'/relevant_neurons_critic.json', 'w') as json_file:
+            json.dump(data, json_file)   
 
 #############################################################################################################
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 
-def tuning_curves(relevant_neurons, X, stimuli, network, label):
+def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label):
     
     #frates = X.T   
     #frates_rid = frates[relevant_neurons]
@@ -390,6 +447,26 @@ def tuning_curves(relevant_neurons, X, stimuli, network, label):
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.suptitle(title, size=25)
     plt.savefig(saving_path)
+   
+    for n in range(frates_rid.shape[0]):
+        frates_rid[n,:] *= relevant_weights[n]
+    lin_comb = np.sum(frates_rid, axis=0)
+    
+    plt.figure(figsize=(16,6))
+    for i in range(len(x_values)):
+        plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color)
+    plt.title("Average over all relevant neurons\n"+network+" network on "+label, size=20)   
+    plt.tick_params(axis='x', labelsize=15)
+    plt.tick_params(axis='y', labelsize=15)
+    plt.xlabel(x_label, size=15)
+    plt.ylabel("firing rate", size=15)
+    
+    if label[-7:] != "_random":
+        plt.savefig("tuning_curves/"+label+"/"+network+" network_LinComb.png")
+
+    if label[-7:] == "_random":
+        label = label[:-7]
+        plt.savefig("tuning_curves/"+label+"/"+network+" network - random_LinComb.png")        
     
 #############################################################################################################
 #============================================================================================================    
@@ -459,4 +536,74 @@ def neurons_population(X, Y, network, label):
     
     with open(saving_path+'neurons_population.json', 'w') as json_file:
         json.dump(data, json_file)
-
+    
+#############################################################################################################
+#============================================================================================================    
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+        
+def critic_tuning_curves(timeav_values, overall_values):
+    
+    global_values = overall_values
+    lista1 = []
+    lista2 = []
+    lista3 = []
+    lista4 = []
+    lista5 = []
+    lista6 = []
+    
+    plt.figure(figsize=(25,7))
+    
+    for i in range(len(global_values)):
+        if global_values[i] == 0.25:
+            color="yellow"
+            lista1.append(timeav_values[i])
+        if global_values[i] == 0.5:
+            color="orange"
+            lista2.append(timeav_values[i])
+        if global_values[i] == 0.75:
+            color="red"
+            lista3.append(timeav_values[i])
+        if global_values[i] == 1:
+            color="purple"
+            lista4.append(timeav_values[i])
+        if global_values[i] == 1.5:
+            color="blue"
+            lista5.append(timeav_values[i])
+        if global_values[i] == 2.25:
+            color="green"
+            lista6.append(timeav_values[i])
+        plt.plot(global_values[i], timeav_values[i], "o", color=color, zorder=1)
+        
+    plt.axhline(0.25, color="yellow", zorder=0)
+    plt.axhline(0.5, color="orange", zorder=0)
+    plt.axhline(0.75, color="red", zorder=0)
+    plt.axhline(1, color="purple", zorder=0)
+    plt.axhline(1.5, color="blue", zorder=0)
+    plt.axhline(2.25, color="green", zorder=0)
+    
+    media1 = np.mean(lista1)
+    std1 = np.std(lista1)
+    media2 = np.mean(lista2)
+    std2 = np.std(lista2)
+    media3 = np.mean(lista3)
+    std3 = np.std(lista3)
+    media4 = np.mean(lista4)
+    std4 = np.std(lista4)
+    media5 = np.mean(lista5)
+    std5 = np.std(lista5)
+    media6 = np.mean(lista6)
+    std6 = np.std(lista6)
+    x_values = [0.25, 0.5, 0.75, 1, 1.5, 2.25]
+    medie = [media1, media2, media3, media4, media5, media6]
+    stds = [std1, std2, std3, std4, std5, std6]
+    
+    for i in range(6):
+        plt.plot(x_values[i], medie[i], "D", color="black", markersize=10, zorder=2)
+        plt.vlines(x_values[i]+0.02, medie[i] - stds[i], medie[i] + stds[i], color="black", linewidth=3, zorder=2)
+    
+    
+    plt.xlabel("overall value", size=20)
+    plt.ylabel("critic output", size=20)
+    plt.xticks(size=20)
+    plt.yticks(size=20)
+    plt.title("critic output vs overall trials' values", size=25);
