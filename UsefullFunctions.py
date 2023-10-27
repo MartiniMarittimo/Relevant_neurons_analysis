@@ -607,3 +607,199 @@ def critic_tuning_curves(timeav_values, overall_values):
     plt.xticks(size=20)
     plt.yticks(size=20)
     plt.title("critic output vs overall trials' values", size=25);
+    plt.savefig("tuning_curves/critic_readout_neuron.png")
+    
+    
+    
+    
+    
+    
+    
+def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label):
+    
+    condizione_prodotto = np.prod(stimuli[:, :2], axis=1) >= np.prod(stimuli[:, 2:], axis=1)
+    indici_prodotto_maggiore = np.where(condizione_prodotto)[0]
+    indici_prodotto_minore = np.where(~condizione_prodotto)[0]
+    stimuli_up = stimuli[indici_prodotto_maggiore] 
+    stimuli_down = stimuli[indici_prodotto_minore]
+    frates_up = X[indici_prodotto_maggiore]
+    frates_down = X[indici_prodotto_minore]
+    print(stimuli_up, stimuli_up.shape, frates_up.shape, frates_down.shape)
+    
+    prodotti = np.prod(stimuli_up[:, :2], axis=1)
+    indici_ordinati = np.argsort(prodotti)[::-1]
+    stimuli_up = stimuli_up[indici_ordinati]
+    frates_up = frates_up[indici_ordinati].T
+    frates_up_rid = frates_up[relevant_neurons]
+    frates_up_rid = frates_up_rid[:, :402]
+    
+    prodotti = np.prod(stimuli_down[:, 2:], axis=1)
+    indici_ordinati = np.argsort(prodotti)
+    stimuli_down = stimuli_down[indici_ordinati]
+    frates_down = frates_down[indici_ordinati].T
+    frates_down_rid = frates_down[relevant_neurons]
+
+    stimuli = np.vstack((stimuli_up, stimuli_down))
+    frates_rid = np.vstack((frates_up_rid.T, frates_down_rid.T))
+    frates_rid = frates_rid.T
+    
+    if network == "actor":
+        color = "purple"
+    else:
+        color = "green"
+
+    fig, axx = plt.subplots(5, 2, figsize=(15, 20))
+    axx = axx.reshape(-1)
+    for n, ax in enumerate(axx):
+        for i in range(frates_up_rid.shape[1]):
+            ax.plot(stimuli_up[i,0]*stimuli_up[i,1] ,frates_up_rid[n, i], "o", markersize=5, color=color)
+            ax.plot(-stimuli_down[i,2]*stimuli_down[i,3] ,frates_down_rid[n, i], "o", markersize=5, color=color)
+            ax.set_title("neuron %i" %(relevant_neurons[n]), size=20)
+            ax.tick_params(axis='x', labelsize=15)
+            ax.tick_params(axis='y', labelsize=15)
+            #ax.set_xlabel(x_label, size=15)
+            #ax.set_ylabel("firing rate", size=15)
+    plt.tight_layout()      
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    #plt.suptitle(title, size=25)
+    #plt.savefig(saving_path)
+    
+    
+"""    
+    indices = np.lexsort(stimuli.T)
+    stimuli = stimuli[indices]
+    frates = X[indices].T 
+    frates_rid = frates[relevant_neurons]
+    
+    split_indices = np.where(np.any(stimuli[:-1] != stimuli[1:], axis=1))[0] + 1
+    split_stimuli = np.split(stimuli, split_indices)
+    split_frates_rid = np.split(frates_rid.T, split_indices)
+
+    block_chain = np.zeros(len(relevant_neurons))    
+    for block in split_frates_rid:
+        block = block.T
+        block = np.mean(block, axis=1)
+        block_chain = np.vstack((block_chain, block))
+        
+    block_chain = block_chain[1:].T
+    frates_rid = block_chain
+    
+    stimuli_rid = np.zeros((len(split_stimuli),4))    
+    for i, segment in enumerate(split_stimuli):
+        stimuli_rid[i] = segment[0]
+        
+    x_values = np.zeros(stimuli_rid.shape[0])
+            
+    if network == "actor":
+        color = "purple"
+    else:
+        color = "green"
+    
+    if label == "actions" or label == "actions_random":
+        for i in range(len(x_values)):
+            x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1] - stimuli_rid[i][2]*stimuli_rid[i][3]
+        x_label = "v1p1-v2p2"
+        saving_path = "tuning_curves/actions/"
+        if not os.path.exists(saving_path):
+            os.makedirs(saving_path)
+        saving_path = "tuning_curves/actions/"+network+" network.png"
+        title = "Firing rates of the most relevant neurons\nencoding for "+\
+                label+"' values in the "+network+" network"
+        if label == "actions_random":
+            color = "black"
+            saving_path = "tuning_curves/actions/"+network+" network - random.png"
+            title = "Firing rates of "+str(len(relevant_neurons))+\
+                    " random neurons\nsorted by actions' values in the "+network+" network"
+   
+    #----------------------------------------------------------------------------------------#            
+    
+    if label == "right_values" or label == "right_values_random":
+        for i in range(len(x_values)):
+            x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1]
+        x_label = "v1p1"
+        saving_path = "tuning_curves/right_values/"
+        if not os.path.exists(saving_path):
+            os.makedirs(saving_path)
+        saving_path = "tuning_curves/right_values/"+network+" network.png"
+        title = "Firing rates of the most relevant neurons\nencoding for "+\
+                label+" in the "+network+" network"
+        if label == "right_values_random":
+            color = "black"
+            saving_path = "tuning_curves/right_values/"+network+" network - random.png"
+            title = "Firing rates of "+str(len(relevant_neurons))+\
+                    " random neurons\nsorted by right_values in the "+network+" network"
+    
+    #----------------------------------------------------------------------------------------#            
+    
+    if label == "left_values" or label == "left_values_random":
+        for i in range(len(x_values)):
+            x_values[i] = stimuli_rid[i][2]*stimuli_rid[i][3]
+        x_label = "v2p2"
+        saving_path = "tuning_curves/left_values/"
+        if not os.path.exists(saving_path):
+            os.makedirs(saving_path)
+        saving_path = "tuning_curves/left_values/"+network+" network.png"
+        title = "Firing rates of the most relevant neurons\nencoding for "+\
+                label+" in the "+network+" network"
+        if label == "left_values_random":
+            color = "black"
+            saving_path = "tuning_curves/left_values/"+network+" network - random.png"
+            title = "Firing rates of "+str(len(relevant_neurons))+\
+                    " random neurons\nsorted by left_values in the "+network+" network"
+                
+    #----------------------------------------------------------------------------------------#
+    
+    if label == "global_values" or label == "global_values_random":
+        for i in range(len(x_values)):
+            x_values[i] = np.max((stimuli_rid[i][0]*stimuli_rid[i][1], stimuli_rid[i][2]*stimuli_rid[i][3]))
+        x_label = "max(v1p1, v2p2)"
+        saving_path = "tuning_curves/global_values/"
+        if not os.path.exists(saving_path):
+            os.makedirs(saving_path)
+        saving_path = "tuning_curves/global_values/"+network+" network.png"
+        title = "Firing rates of the most relevant neurons\nencoding for "+\
+                label+" in the "+network+" network"
+        if label == "global_values_random":
+            color = "black"
+            saving_path = "tuning_curves/global_values/"+network+" network - random.png"
+            title = "Firing rates of "+str(len(relevant_neurons))+\
+                    " random neurons\nsorted by global_values in the "+network+" network"
+     
+    #----------------------------------------------------------------------------------------#
+    
+    fig, axx = plt.subplots(5, 2, figsize=(15, 20))
+    axx = axx.reshape(-1)
+    for n, ax in enumerate(axx):
+        for i in range(len(x_values)):
+            ax.plot(x_values[i], frates_rid[n, i], "o", markersize=5, color=color)
+            #ax.text(x_values[i]+0.03, frates_rid[n, i], str(stimuli_rid[i,:]), fontsize=10)
+            ax.set_title("neuron %i" %(relevant_neurons[n]), size=20)
+            ax.tick_params(axis='x', labelsize=15)
+            ax.tick_params(axis='y', labelsize=15)
+            ax.set_xlabel(x_label, size=15)
+            ax.set_ylabel("firing rate", size=15)
+    plt.tight_layout()      
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.suptitle(title, size=25)
+    plt.savefig(saving_path)
+   
+    for n in range(frates_rid.shape[0]):
+        frates_rid[n,:] *= relevant_weights[n]
+    lin_comb = np.sum(frates_rid, axis=0)
+    
+    plt.figure(figsize=(16,6))
+    for i in range(len(x_values)):
+        plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color)
+    plt.title("Average over all relevant neurons\n"+network+" network on "+label, size=20)   
+    plt.tick_params(axis='x', labelsize=15)
+    plt.tick_params(axis='y', labelsize=15)
+    plt.xlabel(x_label, size=15)
+    plt.ylabel("firing rate", size=15)
+    
+    if label[-7:] != "_random":
+        plt.savefig("tuning_curves/"+label+"/"+network+" network_LinComb.png")
+
+    if label[-7:] == "_random":
+        label = label[:-7]
+        plt.savefig("tuning_curves/"+label+"/"+network+" network - random_LinComb.png")  
+"""
