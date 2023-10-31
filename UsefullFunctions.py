@@ -17,10 +17,7 @@ import json
 import Reinforce as rln
 
 
-
-
-
-def frates_labels(iterations):
+def small_dataset_gen(iterations):
     
     reinforce = rln.REINFORCE(name_load_actor="models/RL_actor_network_good.pt",
                               name_load_critic="models/RL_critic_network_good.pt")
@@ -84,241 +81,65 @@ def frates_labels(iterations):
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 
-def best_noise(X, Y, model, C, network, label, noise_mag=0):
+def big_dataset_gen(iterations):
     
-    saving_path = 'clf_data/'+label
-    if not os.path.exists(saving_path):
-            os.makedirs(saving_path)
-            
-    model = model
-            
-    if model == 'perceptronL1':
-        C_perc = C
-    elif model == 'svm':
-        C_svm = C
+    reinforce = rln.REINFORCE(name_load_actor="models/RL_actor_network_good.pt",
+                              name_load_critic="models/RL_critic_network_good.pt")
+    
+    observations, rewards, actions,\
+    log_action_probs, entropies, values,\
+    trial_begins, errors, frates_actor, frates_critic,\
+    timeav_values, final_actions, overall_values, stimuli = reinforce.experience(iterations)
+    
+    right_values = np.zeros(len(overall_values))
+    left_values = np.zeros(len(overall_values))
+    global_values = copy.deepcopy(overall_values)
+    
+    for i in range (len(global_values)):
+        if  stimuli[i,0]*stimuli[i,1] < stimuli[i,2]*stimuli[i,3]:
+            final_actions[i] = -1
+        elif stimuli[i,0]*stimuli[i,1] > stimuli[i,2]*stimuli[i,3]:
+            final_actions[i] = 1
         
-    original_X = copy.deepcopy(X)
-    mean = np.mean(original_X)
-    list_test_scores = []
-    average_test_scores = []
-    list_test_random_scores = []
-    
-    for k in range(len(noise_mag)):
+        if  stimuli[i,0]*stimuli[i,1] <= 1:
+            right_values[i] = -1
+        else:
+            right_values[i] = 1
         
-        X = copy.deepcopy(original_X)
-        std = mean * noise_mag[k]
-        noise = np.random.normal(0, std, X.shape)
-        X += noise
-                
-        nb_epochs = 20
-    
-        test_scores = np.zeros(nb_epochs)
+        if  stimuli[i,2]*stimuli[i,3] <= 1:
+            left_values[i] = -1
+        else:
+            left_values[i] = 1
         
-        nb_trials = X.shape[0]
-        percentage_training_set = 0.8
-        nb_indeces_training = int(nb_trials*percentage_training_set)
-        
-        for i in range(nb_epochs):
-            
-            all_indeces = np.arange(0, nb_trials)
-            
-            if i == 0:
-                indeces_train = all_indeces[0:nb_indeces_training]
-                indeces_test = all_indeces[nb_indeces_training:]
-            else:
-                np.random.shuffle(all_indeces)
-                indeces_train = all_indeces[0:nb_indeces_training]
-                indeces_test = all_indeces[nb_indeces_training:]
-        
-            X_train_trial = X[indeces_train,:]
-            Y_train_trial = Y[indeces_train]
-            X_test_trial = X[indeces_test,:]
-            Y_test_trial = Y[indeces_test]
-            
-            if model=='perceptron':
-                clf = Perceptron(tol=1e-3, random_state=0)
-            elif model == 'perceptronL1':
-                clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
-            elif model == 'svm':
-                clf = svm.LinearSVC(penalty='l1', C=C_svm, dual = False, max_iter=1000)
-        
-            clf.fit(X_train_trial, Y_train_trial)
-            test_score = clf.score(X_test_trial, Y_test_trial)
-        
-            test_scores[i] = test_score
-            
-        list_test_scores.append(test_scores)
-        average_test_scores.append(np.mean(test_scores))
-        
-        #----------------------------------------------------------------------------------------#
+        if global_values[i] <= 1:
+            global_values[i] = -1
+        else:
+            global_values[i] = 1
     
-        test_random_scores = np.zeros(nb_epochs)
-    
-        for i in range(nb_epochs):
-            
-            all_indeces = np.arange(0, nb_trials)
-            
-            if i == 0:
-                indeces_train = all_indeces[0:nb_indeces_training]
-                indeces_test = all_indeces[nb_indeces_training:]
-            else:
-                np.random.shuffle(all_indeces)
-                indeces_train = all_indeces[0:nb_indeces_training]
-                indeces_test = all_indeces[nb_indeces_training:]
-        
-            X_train_trial = X[indeces_train,:]
-            Y_train_trial = Y[indeces_train]
-            X_test_trial = X[indeces_test,:]
-            Y_test_trial = 2*np.random.binomial(size=200, n=1, p=0.5)-1 
-            
-            if model=='perceptron':
-                clf = Perceptron(tol=1e-3, random_state=0)
-            elif model == 'perceptronL1':
-                clf == Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
-            elif model == 'svm':
-                clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
-            
-            clf.fit(X_train_trial, Y_train_trial)
-            test_score = clf.score(X_test_trial, Y_test_trial)
-            
-            test_random_scores[i] = test_score
-            
-        list_test_random_scores.append(test_random_scores)
-        
-        print("average over 10 epochs of test scores: %.3f" %(np.mean(test_scores)))
-        print("average over 10 epochs of test random scores: %.3f" %(np.mean(test_random_scores)))        
-     
-    fig, axx = plt.subplots(len(noise_mag), 1, figsize=(6, 20))
-    axx = axx.reshape(-1)
-    for i, ax in enumerate(axx):
-        bin_edges = np.linspace(0.2, 1, 50)
-        ax.hist(list_test_scores[i], bins=bin_edges, label="test scores", edgecolor="k")
-        ax.hist(list_test_random_scores[i], bins=bin_edges, label="test random scores", edgecolor="k")
-        ax.set_title("noise: %.2f$\mu$" %(noise_mag[i]), fontsize=15)
-        ax.tick_params(axis='x', labelsize=15)
-        ax.tick_params(axis='y', labelsize=15)
-        ax.set_xlabel("mean accuracy", size=15)
-        ax.set_ylabel("occurences", size=15)
-        ax.legend(fontsize=15, loc="upper left")
-    plt.tight_layout()      
-    plt.tight_layout(rect=[0, 0.03, 1, 0.93])
-    plt.suptitle("Test scores\n"+network+" network on "+label+\
-                 "\n(average neuronal activity $\mu$=%.2f)" %(mean), fontsize=20)
-    plt.savefig('clf_data/'+label+'/hist: '+network+' - '+label+'.png')
-    
-    plt.figure(figsize=(10,5))
-    plt.plot(noise_mag, average_test_scores, "-^", markersize=10)
-    for i in range(len(noise_mag)):
-        plt.text(noise_mag[i]+0.02, average_test_scores[i], "%.2f" %(average_test_scores[i]), fontsize=10)
-    plt.title("Mean test scores over noise magnitude\n"+network+" network on "+label, fontsize=20)
-    plt.xticks(size=15)
-    plt.yticks(size=15)
-    plt.xlabel("noise magnitude [$\mu$]", size=15)
-    plt.ylabel("mean test score", size=15)
-    plt.savefig(saving_path+'/'+network+' network mean test scores.png')
-
-#############################################################################################################
-#============================================================================================================    
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
-    
-def rel_neurons(X, Y, model, C, network, label, noise_mag=0):
-
-    saving_path = 'clf_data/'+label
-    if not os.path.exists(saving_path):
-            os.makedirs(saving_path)
-            
-    model = model
-            
-    if model == 'perceptronL1':
-        C_perc = C
-    elif model == 'svm':
-        C_svm = C
-    
-    mean = np.mean(X)
-    std = mean * noise_mag
-    noise = np.random.normal(0, std, X.shape)
-    X += noise
-    
-    nb_trials = X.shape[0]
-    percentage_training_set = 0.8
-    nb_indeces_training = int(nb_trials*percentage_training_set)
-    all_indeces = np.arange(0, nb_trials)
-    np.random.shuffle(all_indeces)
-    
-    indeces_train = all_indeces[0:nb_indeces_training]
-    indeces_test = all_indeces[nb_indeces_training:]
-    X_train_trial = X[indeces_train,:]
-    Y_train_trial = Y[indeces_train]
-    X_test_trial = X[indeces_test,:]
-    Y_test_trial = Y[indeces_test]
-    
-    if model=='perceptron':
-        clf = Perceptron(tol=1e-3, random_state=0)
-    elif model == 'perceptronL1':
-        clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
-    elif model == 'svm':
-        clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
-        
-    clf.fit(X_train_trial, Y_train_trial)
-    training_score = clf.score(X_train_trial, Y_train_trial)
-    test_score = clf.score(X_test_trial, Y_test_trial)
-    print("----------\ntraining score: %.3f" %(training_score))
-    print("test score: %.3f" %(test_score), "\n----------")
-    
-    w = clf.coef_
-    b = clf.intercept_
-    
-    relevant_neurons = []
-    relevant_neurons_values = []
-    relevant_neurons_values_abs = []
-    plt.figure(figsize=(15,7))
-    plt.plot(w[0,:])
-    for i in range(len(w[0,:])):
-        if w[0,i] != 0:
-            plt.text(i, w[0,i], "(%i, %.3f)" %(i, w[0,i]), style='italic', fontsize=15)
-            relevant_neurons_values.append(w[0,i])
-            relevant_neurons_values_abs.append(np.abs(w[0,i]))
-            relevant_neurons.append(i)
-    plt.title(network+" network relevant neurons for "+label, fontsize=20);
-    plt.xticks(size=15)
-    plt.yticks(size=15)
-    
-    relevant_size = 10
-    sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons))
-    relevant_neurons = [pair[1] for pair in sorted_pairs]
-    relevant_neurons.reverse()
-    relevant_neurons = relevant_neurons[:relevant_size]
-    sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons_values))
-    relevant_neurons_values = [pair[1] for pair in sorted_pairs]
-    relevant_neurons_values.reverse()
-    relevant_neurons_values = relevant_neurons_values[:relevant_size]
-    
-    check = True
-    random_neurons = np.zeros(len(relevant_neurons))
-    while check is True:
-        random_neurons = np.random.randint(0, 128, 10)
-        bool_array = np.isin(random_neurons, relevant_neurons)
-        check = any(bool_array)
-    random_weights = w[0, random_neurons]
-    
-    array1_list = np.asarray(relevant_neurons).tolist()
-    array2_list = np.asarray(relevant_neurons_values).tolist()
-    array3_list = random_neurons.tolist()
-    array4_list = random_weights.tolist()
+    array1_list = frates_actor[:, 1:].T.tolist()
+    array2_list = frates_critic[:, 1:].T.tolist()
+    array3_list = final_actions[1:].tolist()
+    array4_list = right_values[1:].tolist()
+    array5_list = left_values[1:].tolist()
+    array6_list = overall_values[1:].tolist()
+    array7_list = global_values[1:].tolist()
+    array8_list = stimuli[1:].tolist()
+    array9_list = timeav_values[1:].tolist()
     
     data = {
-        "relevant_neurons": array1_list,
-        "relevant_weights": array2_list,
-        "random_neurons": array3_list,
-        "random_weights": array4_list
+        "frates_actor": array1_list,
+        "frates_critic": array2_list,
+        "final_actions": array3_list,
+        "right_values": array4_list,
+        "left_values": array5_list,
+        "overall_values": array6_list,
+        "global_values": array7_list,    
+        "stimuli": array8_list,
+        "timeav_values": array9_list
     }
     
-    if network == "actor":
-        with open('clf_data/'+label+'/relevant_neurons_actor.json', 'w') as json_file:
-            json.dump(data, json_file)
-    else:
-        with open('clf_data/'+label+'/relevant_neurons_critic.json', 'w') as json_file:
-            json.dump(data, json_file)   
+    with open('frates_labels.json', 'w') as json_file:
+        json.dump(data, json_file)
 
 #############################################################################################################
 #============================================================================================================    
@@ -432,17 +253,41 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
      
     #----------------------------------------------------------------------------------------#
     
+    indices = np.argsort(x_values)
+    x_values_ordered = x_values[indices]
+    frates_rid_ordered = frates_rid.T[indices].T
+    
+    split_indices = np.where(x_values_ordered[:-1] != x_values_ordered[1:])[0] + 1
+    split_x_values_ordered = np.split(x_values_ordered, split_indices)
+    split_frates_ordered = np.split(frates_rid_ordered.T, split_indices)
+    
+    
+    tc_mean = np.zeros(10)
+    tc_std = np.zeros(10)
+    x_mean = np.zeros(len(split_frates_ordered))
+    for b, block in enumerate(split_frates_ordered):
+        tc_mean = np.vstack((tc_mean, np.mean(block, axis=0)))
+        tc_std = np.vstack((tc_std, np.std(block, axis=0)))
+        x_mean[b] = np.mean(split_x_values_ordered[b])
+        #print("\nhere\n", block, "\nhere\n")
+    #print(tc_mean)
+    tc_mean = tc_mean[1:, :]
+    tc_std = tc_std[1:, :]
+    
     fig, axx = plt.subplots(5, 2, figsize=(15, 20))
     axx = axx.reshape(-1)
     for n, ax in enumerate(axx):
         for i in range(len(x_values)):
-            ax.plot(x_values[i], frates_rid[n, i], "o", markersize=5, color=color)
+            ax.plot(x_values_ordered[i], frates_rid_ordered[n, i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
             #ax.text(x_values[i]+0.03, frates_rid[n, i], str(stimuli_rid[i,:]), fontsize=10)
             ax.set_title("neuron %i" %(relevant_neurons[n]), size=20)
             ax.tick_params(axis='x', labelsize=15)
             ax.tick_params(axis='y', labelsize=15)
             ax.set_xlabel(x_label, size=15)
             ax.set_ylabel("firing rate", size=15)
+        #for i in range(len(tc_mean)):
+        ax.plot(x_mean, tc_mean[:, n], "D-", markersize=10, zorder=1, color="black")
+        ax.vlines(x_mean, tc_mean[:, n] - tc_std[:, n], tc_mean[:, n] + tc_std[:, n], color="black", linewidth=3, zorder=2)
     plt.tight_layout()      
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.suptitle(title, size=25)
@@ -451,10 +296,20 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
     for n in range(frates_rid.shape[0]):
         frates_rid[n,:] *= relevant_weights[n]
     lin_comb = np.sum(frates_rid, axis=0)
+    lin_comb_ordered = lin_comb[indices]
+    split_lin_comb_ordered = np.split(lin_comb_ordered, split_indices)
+    
+    lin_comb_mean = np.zeros(len(split_lin_comb_ordered))
+    lin_comb_std = np.zeros(len(split_lin_comb_ordered))
+    for b, block in enumerate(split_lin_comb_ordered):
+        lin_comb_mean[b] = np.mean(block)
+        lin_comb_std[b] = np.std(block)
     
     plt.figure(figsize=(16,6))
     for i in range(len(x_values)):
-        plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color)
+        plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
+    plt.plot(x_mean, lin_comb_mean, "D-", markersize=5, zorder=1, color="black")
+    plt.vlines(x_mean, lin_comb_mean - lin_comb_std, lin_comb_mean + lin_comb_std, color="black", linewidth=3, zorder=1)
     plt.title("Average over all relevant neurons\n"+network+" network on "+label, size=20)   
     plt.tick_params(axis='x', labelsize=15)
     plt.tick_params(axis='y', labelsize=15)
