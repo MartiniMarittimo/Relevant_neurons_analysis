@@ -19,13 +19,24 @@ import Reinforce as rln
 
 def small_dataset_gen(iterations):
     
-    reinforce = rln.REINFORCE(name_load_actor="models/RL_actor_network_good.pt",
-                              name_load_critic="models/RL_critic_network_good.pt")
+    values = np.array([1, 2, 3])
+    probabilities = np.array([0.25, 0.5, 0.75])
     
-    observations, rewards, actions,\
-    log_action_probs, entropies, values,\
-    trial_begins, errors, frates_actor, frates_critic,\
-    timeav_values, final_actions, overall_values, stimuli = reinforce.experience(iterations)
+    for i, v1 in enumerate(values):
+        for j, p1 in enumerate(probabilities):
+            for k, v2 in enumerate(values):
+                for l, p2 in enumerate(probabilities):
+                    
+                    reinforce = rln.REINFORCE(name_load_actor="models/RL_actor_network_good.pt",
+                                              name_load_critic="models/RL_critic_network_good.pt",
+                                              v1s=v1, p1s=p1, v2s=v2, p2s=p2)
+    
+                    observations, rewards, actions,\
+                    log_action_probs, entropies, values,\
+                    trial_begins, errors, frates_actor, frates_critic,\
+                    timeav_values, final_actions, overall_values, stimuli = reinforce.experience(1)
+        
+                    print(frates_actor.shape, frates_critic.shape, timeav_values.shape)
     
     right_values = np.zeros(len(overall_values))
     left_values = np.zeros(len(overall_values))
@@ -74,7 +85,7 @@ def small_dataset_gen(iterations):
         "timeav_values": array9_list
     }
     
-    with open('frates_labels.json', 'w') as json_file:
+    with open('small_dataset.json', 'w') as json_file:
         json.dump(data, json_file)
 
 #############################################################################################################
@@ -138,7 +149,7 @@ def big_dataset_gen(iterations):
         "timeav_values": array9_list
     }
     
-    with open('frates_labels.json', 'w') as json_file:
+    with open('big_dataset.json', 'w') as json_file:
         json.dump(data, json_file)
 
 #############################################################################################################
