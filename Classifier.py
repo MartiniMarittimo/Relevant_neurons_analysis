@@ -18,9 +18,9 @@ import Reinforce as rln
 
 
 
-def noise_effect(X, Y, model, param_mag, network, label, noise_mag):
+def noise_effect(X, Y, model, param_mag, network, label, noise_mag, size):
     
-    saving_path = 'clf_data/'+label
+    saving_path = 'clf_data_'+size+'/'+label
     if not os.path.exists(saving_path):
             os.makedirs(saving_path)
             
@@ -41,10 +41,10 @@ def noise_effect(X, Y, model, param_mag, network, label, noise_mag):
         
         X = copy.deepcopy(original_X)
         std = mean * noise_mag[k]
-        noise = np.random.normal(0, std, X.shape)
-        X += noise
+        #noise = np.random.normal(0, std, X.shape)
+        #X += noise
 
-        nb_epochs = 20
+        nb_epochs = 250
 
         test_scores = np.zeros(nb_epochs)
 
@@ -68,6 +68,9 @@ def noise_effect(X, Y, model, param_mag, network, label, noise_mag):
             Y_train_trial = Y[indeces_train]
             X_test_trial = X[indeces_test,:]
             Y_test_trial = Y[indeces_test]
+            
+            noise = np.random.normal(0, std, X_train_trial.shape)
+            X_train_trial += noise
 
             if model=='perceptron':
                 clf = Perceptron(tol=1e-3, random_state=0)
@@ -103,7 +106,10 @@ def noise_effect(X, Y, model, param_mag, network, label, noise_mag):
             X_train_trial = X[indeces_train,:]
             Y_train_trial = Y[indeces_train]
             X_test_trial = X[indeces_test,:]
-            Y_test_trial = 2*np.random.binomial(size=200, n=1, p=0.5)-1 
+            Y_test_trial = 2*np.random.binomial(size=X_test_trial.shape[0], n=1, p=0.5)-1 
+            
+            noise = np.random.normal(0, std, X_train_trial.shape)
+            X_train_trial += noise
 
             if model=='perceptron':
                 clf = Perceptron(tol=1e-3, random_state=0)
@@ -119,8 +125,8 @@ def noise_effect(X, Y, model, param_mag, network, label, noise_mag):
 
         list_test_random_scores.append(test_random_scores)
 
-        print("average over 10 epochs of test scores: %.3f" %(np.mean(test_scores)))
-        print("average over 10 epochs of test random scores: %.3f" %(np.mean(test_random_scores)))        
+        print("average over "+str(nb_epochs)+" epochs of test scores: %.2f" %(np.mean(test_scores)))
+        print("average over "+str(nb_epochs)+" epochs of test random scores: %.2f" %(np.mean(test_random_scores)))        
      
     fig, axx = plt.subplots(int(len(noise_mag)/2), 2, figsize=(12, 20))
     axx = axx.reshape(-1)
@@ -138,13 +144,14 @@ def noise_effect(X, Y, model, param_mag, network, label, noise_mag):
     plt.tight_layout(rect=[0, 0.03, 1, 0.93])
     plt.suptitle("TEST SCORES\n"+network+" network on "+label+\
                  "\n(mean neuronal activity $\mu$=%.2f)" %(mean), fontsize=20)
-    plt.savefig('clf_data/'+label+'/hist_noise: '+network+' - '+label+'.png')
+    plt.savefig(saving_path+'/hist_noise: '+network+' - '+label+'.png')
+    plt.close()
     
     plt.figure(figsize=(10,5))
-    plt.plot(noise_mag, average_test_scores, "-^", markersize=10)
+    plt.plot(noise_mag, average_test_scores, "-^", markersize=10, color="tomato")
     for i in range(len(noise_mag)):
-        plt.text(noise_mag[i]+0.02, average_test_scores[i], "%.2f" %(average_test_scores[i]), fontsize=10)
-    plt.title("Mean test scores over noise magnitude\n("+network+" network on "+label+")", fontsize=20)
+        plt.text(noise_mag[i], average_test_scores[i], "%.3f" %(average_test_scores[i]), fontsize=10)
+    plt.title("Mean test scores over noise magnitude\n("+network+" network on "+label+", C = %.2f)" %(param_mag), fontsize=20)
     plt.xticks(size=15)
     plt.yticks(size=15)
     plt.xlabel("noise magnitude [$\mu$]", size=15)
@@ -155,9 +162,9 @@ def noise_effect(X, Y, model, param_mag, network, label, noise_mag):
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     
     
-def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag):
+def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, size):
     
-    saving_path = 'clf_data/'+label
+    saving_path = 'clf_data_'+size+'/'+label
     if not os.path.exists(saving_path):
             os.makedirs(saving_path)
             
@@ -167,8 +174,8 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag):
     mean = np.mean(original_X)
     std = mean * noise_mag
     X = copy.deepcopy(original_X)
-    noise = np.random.normal(0, std, X.shape)
-    X += noise
+    #noise = np.random.normal(0, std, X.shape)
+    #X += noise
         
     list_test_scores = []
     average_test_scores = []
@@ -181,7 +188,7 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag):
         elif model == 'svm':
             C_svm = param_mag[k]
 
-        nb_epochs = 60
+        nb_epochs = 250
 
         test_scores = np.zeros(nb_epochs)
 
@@ -205,6 +212,9 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag):
             Y_train_trial = Y[indeces_train]
             X_test_trial = X[indeces_test,:]
             Y_test_trial = Y[indeces_test]
+            
+            noise = np.random.normal(0, std, X_train_trial.shape)
+            X_train_trial += noise
 
             if model=='perceptron':
                 clf = Perceptron(tol=1e-3, random_state=0)
@@ -240,7 +250,10 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag):
             X_train_trial = X[indeces_train,:]
             Y_train_trial = Y[indeces_train]
             X_test_trial = X[indeces_test,:]
-            Y_test_trial = 2*np.random.binomial(size=200, n=1, p=0.5)-1 
+            Y_test_trial = 2*np.random.binomial(size=X_test_trial.shape[0], n=1, p=0.5)-1 
+            
+            noise = np.random.normal(0, std, X_train_trial.shape)
+            X_train_trial += noise
 
             if model=='perceptron':
                 clf = Perceptron(tol=1e-3, random_state=0)
@@ -256,8 +269,8 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag):
 
         list_test_random_scores.append(test_random_scores)
 
-        print("average over 10 epochs of test scores: %.3f" %(np.mean(test_scores)))
-        print("average over 10 epochs of test random scores: %.3f" %(np.mean(test_random_scores)))        
+        print("average over "+str(nb_epochs)+" epochs of test scores: %.2f" %(np.mean(test_scores)))
+        print("average over "+str(nb_epochs)+" epochs of test random scores: %.2f" %(np.mean(test_random_scores)))        
      
     fig, axx = plt.subplots(int(len(param_mag)/2), 2, figsize=(12, 20))
     axx = axx.reshape(-1)
@@ -275,18 +288,18 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag):
     plt.tight_layout(rect=[0, 0.03, 1, 0.93])
     plt.suptitle("TEST SCORES\n"+network+" network on "+label+\
                  "\n(mean neuronal activity $\mu$=%.2f)" %(mean), fontsize=20)
-    plt.savefig('clf_data/'+label+'/hist_regularization: '+network+' - '+label+'.png')
+    plt.savefig(saving_path+'/hist_regularization: '+network+' - '+label+'.png')
     plt.close()
     
     plt.figure(figsize=(10,5))
-    plt.plot(param_mag, average_test_scores, "-^", markersize=10)
+    plt.plot(param_mag, average_test_scores, "-^", markersize=10, color="lightseagreen")
     for i in range(len(param_mag)):
-        plt.text(param_mag[i], average_test_scores[i]-0.01, "%.2f" %(average_test_scores[i]), fontsize=10)
+        plt.text(param_mag[i], average_test_scores[i], "%.3f" %(average_test_scores[i]), fontsize=10)
     plt.xscale("log")
-    plt.title("Mean test scores over regularization parameter magnitude\n("+network+" network on "+label+")", fontsize=20)
+    plt.title("Mean test scores over regularization parameter magnitude\n("+network+" network on "+label+", noise = %.2f)" %(noise_mag), fontsize=20)
     plt.xticks(size=15)
     plt.yticks(size=15)
-    plt.xlabel("regularization parameter magnitude C", size=15)
+    plt.xlabel("regularization parameter magnitude", size=15)
     plt.ylabel("mean test score", size=15)
     plt.savefig(saving_path+'/'+network+' network mean test scores over regularization.png')
     
@@ -294,11 +307,11 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag):
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
     
-def rel_neurons(X, Y, model, C, network, label, noise_mag=0):
+def rel_neurons(X, Y, model, C, network, label, noise_mag, size):
 
-    saving_path = 'clf_data/'+label
+    saving_path = 'clf_data_'+size+'/'+label
     if not os.path.exists(saving_path):
-            os.makedirs(saving_path)
+        os.makedirs(saving_path)
             
     model = model
             
@@ -309,8 +322,8 @@ def rel_neurons(X, Y, model, C, network, label, noise_mag=0):
     
     mean = np.mean(X)
     std = mean * noise_mag
-    noise = np.random.normal(0, std, X.shape)
-    X += noise
+    #noise = np.random.normal(0, std, X.shape)
+    #X += noise
     
     nb_trials = X.shape[0]
     percentage_training_set = 0.8
@@ -324,6 +337,9 @@ def rel_neurons(X, Y, model, C, network, label, noise_mag=0):
     Y_train_trial = Y[indeces_train]
     X_test_trial = X[indeces_test,:]
     Y_test_trial = Y[indeces_test]
+    
+    noise = np.random.normal(0, std, X_train_trial.shape)
+    X_train_trial += noise
     
     if model=='perceptron':
         clf = Perceptron(tol=1e-3, random_state=0)
@@ -387,10 +403,10 @@ def rel_neurons(X, Y, model, C, network, label, noise_mag=0):
     }
     
     if network == "actor":
-        with open('clf_data/'+label+'/relevant_neurons_actor.json', 'w') as json_file:
+        with open(saving_path+'/relevant_neurons_actor.json', 'w') as json_file:
             json.dump(data, json_file)
     else:
-        with open('clf_data/'+label+'/relevant_neurons_critic.json', 'w') as json_file:
+        with open(saving_path+'/relevant_neurons_critic.json', 'w') as json_file:
             json.dump(data, json_file)   
 
 #############################################################################################################

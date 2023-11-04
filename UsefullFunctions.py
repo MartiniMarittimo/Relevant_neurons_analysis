@@ -6,6 +6,7 @@ import numpy as np
 from sklearn import svm
 from sklearn.linear_model import Perceptron
 import copy
+import random
 
 import matplotlib.pyplot as plt
 import matplotlib 
@@ -19,59 +20,92 @@ import Reinforce as rln
 
 def small_dataset_gen(iterations):
     
-    values = np.array([1, 2, 3])
-    probabilities = np.array([0.25, 0.5, 0.75])
+    input_values = np.array([1, 2, 3])
+    input_probabilities = np.array([0.25, 0.5, 0.75])
     
-    for i, v1 in enumerate(values):
-        for j, p1 in enumerate(probabilities):
-            for k, v2 in enumerate(values):
-                for l, p2 in enumerate(probabilities):
+    new_frates_actor = np.zeros(128)
+    new_frates_critic = np.zeros(128)
+    new_stimuli = np.zeros(4)
+    fin_actions = []
+    right_values = []
+    left_values = []
+    new_overall_values = []
+    global_values = []
+    new_timeav_values = []
+    
+    for i, v1 in enumerate(input_values):
+        for j, p1 in enumerate(input_probabilities):
+            for k, v2 in enumerate(input_values):
+                for l, p2 in enumerate(input_probabilities):
+                    
+                    v1_array = np.array([v1])
+                    p1_array = np.array([p1])
+                    v2_array = np.array([v2])
+                    p2_array = np.array([p2])
                     
                     reinforce = rln.REINFORCE(name_load_actor="models/RL_actor_network_good.pt",
                                               name_load_critic="models/RL_critic_network_good.pt",
-                                              v1s=v1, p1s=p1, v2s=v2, p2s=p2)
+                                              v1s=v1_array, p1s=p1_array, v2s=v2_array, p2s=p2_array)
     
                     observations, rewards, actions,\
                     log_action_probs, entropies, values,\
                     trial_begins, errors, frates_actor, frates_critic,\
-                    timeav_values, final_actions, overall_values, stimuli = reinforce.experience(1)
-        
-                    print(frates_actor.shape, frates_critic.shape, timeav_values.shape)
+                    timeav_values, final_actions, overall_values, stimuli = reinforce.experience(iterations)
+                            
+                    frates_actor = np.mean(frates_actor, axis=1)
+                    frates_critic = np.mean(frates_critic, axis=1)
+                    stimuli = np.mean(stimuli, axis=0)
+                    overall_values = np.mean(overall_values)
+                    timeav_values = np.mean(timeav_values)
+                    
+                    if  stimuli[0]*stimuli[1] < stimuli[2]*stimuli[3]:
+                        fin_actions.append(-1)
+                    elif stimuli[0]*stimuli[1] > stimuli[2]*stimuli[3]:
+                        fin_actions.append(1)
+                    else:
+                        a = random.choice([1, -1])
+                        fin_actions.append(a)
+                    
+                    if  stimuli[0]*stimuli[1] <= 1:
+                        right_values.append(-1)
+                    else:
+                        right_values.append(1)
+                    
+                    if  stimuli[2]*stimuli[3] <= 1:
+                        left_values.append(-1)
+                    else:
+                        left_values.append(1)
+                        
+                    if overall_values <= 1:
+                        global_values.append(-1) 
+                    else:
+                        global_values.append(1) 
+                    
+                    new_frates_actor = np.vstack((new_frates_actor, frates_actor))
+                    new_frates_critic = np.vstack((new_frates_critic, frates_critic))
+                    new_stimuli = np.vstack((new_stimuli, stimuli))
+                    new_overall_values.append(overall_values)
+                    new_timeav_values.append(timeav_values)
     
-    right_values = np.zeros(len(overall_values))
-    left_values = np.zeros(len(overall_values))
-    global_values = copy.deepcopy(overall_values)
-    
-    for i in range (len(global_values)):
-        if  stimuli[i,0]*stimuli[i,1] < stimuli[i,2]*stimuli[i,3]:
-            final_actions[i] = -1
-        elif stimuli[i,0]*stimuli[i,1] > stimuli[i,2]*stimuli[i,3]:
-            final_actions[i] = 1
-        
-        if  stimuli[i,0]*stimuli[i,1] <= 1:
-            right_values[i] = -1
-        else:
-            right_values[i] = 1
-        
-        if  stimuli[i,2]*stimuli[i,3] <= 1:
-            left_values[i] = -1
-        else:
-            left_values[i] = 1
-        
-        if global_values[i] <= 1:
-            global_values[i] = -1
-        else:
-            global_values[i] = 1
-    
-    array1_list = frates_actor[:, 1:].T.tolist()
-    array2_list = frates_critic[:, 1:].T.tolist()
-    array3_list = final_actions[1:].tolist()
-    array4_list = right_values[1:].tolist()
-    array5_list = left_values[1:].tolist()
-    array6_list = overall_values[1:].tolist()
-    array7_list = global_values[1:].tolist()
-    array8_list = stimuli[1:].tolist()
-    array9_list = timeav_values[1:].tolist()
+    new_frates_actor = new_frates_actor[1:, :]
+    new_frates_critic = new_frates_critic[1:, :]
+    new_stimuli = new_stimuli[1:, :]
+    fin_actions = np.asarray(fin_actions)
+    right_values = np.asarray(right_values)
+    left_values = np.asarray(left_values)
+    new_overall_values = np.asarray(new_overall_values)
+    global_values = np.asarray(global_values)
+    new_timeav_values = np.asarray(new_timeav_values)
+   
+    array1_list = new_frates_actor.tolist()
+    array2_list = new_frates_critic.tolist()
+    array3_list = fin_actions.tolist()
+    array4_list = right_values.tolist()
+    array5_list = left_values.tolist()
+    array6_list = new_overall_values.tolist()
+    array7_list = global_values.tolist()
+    array8_list = new_stimuli.tolist()
+    array9_list = new_timeav_values.tolist()
     
     data = {
         "frates_actor": array1_list,
@@ -150,6 +184,76 @@ def big_dataset_gen(iterations):
     }
     
     with open('big_dataset.json', 'w') as json_file:
+        json.dump(data, json_file)
+
+#############################################################################################################
+#============================================================================================================    
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+def special_dataset_gen(iterations=100):
+    
+    input_values = np.array([1, 3])
+    input_probabilities = np.array([0.25, 0.5, 0.75])
+    
+    new_frates_actor = np.zeros(128)
+    new_frates_critic = np.zeros(128)
+    new_stimuli = np.zeros(4)
+    global_values = []
+    
+    for i, v1 in enumerate(input_values):
+        for j, p1 in enumerate(input_probabilities):
+            for k, v2 in enumerate(input_values):
+                for l, p2 in enumerate(input_probabilities):
+                    
+                    if v1 != v2:
+                        
+                        v1_array = np.array([v1])
+                        p1_array = np.array([p1])
+                        v2_array = np.array([v2])
+                        p2_array = np.array([p2])
+                        
+                        reinforce = rln.REINFORCE(name_load_actor="models/RL_actor_network_good.pt",
+                                                  name_load_critic="models/RL_critic_network_good.pt",
+                                                  v1s=v1_array, p1s=p1_array, v2s=v2_array, p2s=p2_array)
+        
+                        observations, rewards, actions,\
+                        log_action_probs, entropies, values,\
+                        trial_begins, errors, frates_actor, frates_critic,\
+                        timeav_values, final_actions, overall_values, stimuli = reinforce.experience(iterations)
+                                
+                        #frates_actor = np.mean(frates_actor, axis=1)
+                        #frates_critic = np.mean(frates_critic, axis=1)
+                        #stimuli = np.mean(stimuli, axis=0)
+                        
+                        for i in range(len(overall_values)):
+                            if overall_values[i] <= 1:
+                                global_values.append(-1) 
+                            else:
+                                global_values.append(1) 
+                                
+                        print(frates_actor.shape, frates_critic.shape)
+                        new_frates_actor = np.vstack((new_frates_actor, frates_actor.T))
+                        new_frates_critic = np.vstack((new_frates_critic, frates_critic.T))
+                        new_stimuli = np.vstack((new_stimuli, stimuli))
+                        
+    new_frates_actor = new_frates_actor[1:, :]
+    new_frates_critic = new_frates_critic[1:, :]
+    new_stimuli = new_stimuli[1:, :]
+    global_values = np.asarray(global_values)
+   
+    array1_list = new_frates_actor.tolist()
+    array2_list = new_frates_critic.tolist()
+    array7_list = global_values.tolist()
+    array8_list = new_stimuli.tolist()
+    
+    data = {
+        "frates_actor": array1_list,
+        "frates_critic": array2_list,
+        "global_values": array7_list,    
+        "stimuli": array8_list
+    }
+    
+    with open('special_dataset.json', 'w') as json_file:
         json.dump(data, json_file)
 
 #############################################################################################################
@@ -297,8 +401,8 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
             ax.set_xlabel(x_label, size=15)
             ax.set_ylabel("firing rate", size=15)
         #for i in range(len(tc_mean)):
-        ax.plot(x_mean, tc_mean[:, n], "D-", markersize=10, zorder=1, color="black")
-        ax.vlines(x_mean, tc_mean[:, n] - tc_std[:, n], tc_mean[:, n] + tc_std[:, n], color="black", linewidth=3, zorder=2)
+        ax.plot(x_mean, tc_mean[:, n], "D-", markersize=5, zorder=1, color="black")
+        ax.vlines(x_mean, tc_mean[:, n] - tc_std[:, n], tc_mean[:, n] + tc_std[:, n], color="black", linewidth=2, zorder=2)
     plt.tight_layout()      
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.suptitle(title, size=25)
@@ -320,7 +424,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
     for i in range(len(x_values)):
         plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
     plt.plot(x_mean, lin_comb_mean, "D-", markersize=5, zorder=1, color="black")
-    plt.vlines(x_mean, lin_comb_mean - lin_comb_std, lin_comb_mean + lin_comb_std, color="black", linewidth=3, zorder=1)
+    plt.vlines(x_mean, lin_comb_mean - lin_comb_std, lin_comb_mean + lin_comb_std, color="black", linewidth=2, zorder=1)
     plt.title("Average over all relevant neurons\n"+network+" network on "+label, size=20)   
     plt.tick_params(axis='x', labelsize=15)
     plt.tick_params(axis='y', labelsize=15)
@@ -476,62 +580,13 @@ def critic_tuning_curves(timeav_values, overall_values):
     plt.savefig("tuning_curves/critic_readout_neuron.png")
     
     
-    
-    
-    
-    
-    
 def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label):
     
-    condizione_prodotto = np.prod(stimuli[:, :2], axis=1) >= np.prod(stimuli[:, 2:], axis=1)
-    indici_prodotto_maggiore = np.where(condizione_prodotto)[0]
-    indici_prodotto_minore = np.where(~condizione_prodotto)[0]
-    stimuli_up = stimuli[indici_prodotto_maggiore] 
-    stimuli_down = stimuli[indici_prodotto_minore]
-    frates_up = X[indici_prodotto_maggiore]
-    frates_down = X[indici_prodotto_minore]
-    print(stimuli_up, stimuli_up.shape, frates_up.shape, frates_down.shape)
+    #frates = X.T   
+    #frates_rid = frates[relevant_neurons]
+    #x_values = np.zeros(stimuli.shape[0])
+    #stimuli_rid = stimuli
     
-    prodotti = np.prod(stimuli_up[:, :2], axis=1)
-    indici_ordinati = np.argsort(prodotti)[::-1]
-    stimuli_up = stimuli_up[indici_ordinati]
-    frates_up = frates_up[indici_ordinati].T
-    frates_up_rid = frates_up[relevant_neurons]
-    frates_up_rid = frates_up_rid[:, :402]
-    
-    prodotti = np.prod(stimuli_down[:, 2:], axis=1)
-    indici_ordinati = np.argsort(prodotti)
-    stimuli_down = stimuli_down[indici_ordinati]
-    frates_down = frates_down[indici_ordinati].T
-    frates_down_rid = frates_down[relevant_neurons]
-
-    stimuli = np.vstack((stimuli_up, stimuli_down))
-    frates_rid = np.vstack((frates_up_rid.T, frates_down_rid.T))
-    frates_rid = frates_rid.T
-    
-    if network == "actor":
-        color = "purple"
-    else:
-        color = "green"
-
-    fig, axx = plt.subplots(5, 2, figsize=(15, 20))
-    axx = axx.reshape(-1)
-    for n, ax in enumerate(axx):
-        for i in range(frates_up_rid.shape[1]):
-            ax.plot(stimuli_up[i,0]*stimuli_up[i,1] ,frates_up_rid[n, i], "o", markersize=5, color=color)
-            ax.plot(-stimuli_down[i,2]*stimuli_down[i,3] ,frates_down_rid[n, i], "o", markersize=5, color=color)
-            ax.set_title("neuron %i" %(relevant_neurons[n]), size=20)
-            ax.tick_params(axis='x', labelsize=15)
-            ax.tick_params(axis='y', labelsize=15)
-            #ax.set_xlabel(x_label, size=15)
-            #ax.set_ylabel("firing rate", size=15)
-    plt.tight_layout()      
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    #plt.suptitle(title, size=25)
-    #plt.savefig(saving_path)
-    
-    
-"""    
     indices = np.lexsort(stimuli.T)
     stimuli = stimuli[indices]
     frates = X[indices].T 
@@ -560,58 +615,7 @@ def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, l
         color = "purple"
     else:
         color = "green"
-    
-    if label == "actions" or label == "actions_random":
-        for i in range(len(x_values)):
-            x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1] - stimuli_rid[i][2]*stimuli_rid[i][3]
-        x_label = "v1p1-v2p2"
-        saving_path = "tuning_curves/actions/"
-        if not os.path.exists(saving_path):
-            os.makedirs(saving_path)
-        saving_path = "tuning_curves/actions/"+network+" network.png"
-        title = "Firing rates of the most relevant neurons\nencoding for "+\
-                label+"' values in the "+network+" network"
-        if label == "actions_random":
-            color = "black"
-            saving_path = "tuning_curves/actions/"+network+" network - random.png"
-            title = "Firing rates of "+str(len(relevant_neurons))+\
-                    " random neurons\nsorted by actions' values in the "+network+" network"
-   
-    #----------------------------------------------------------------------------------------#            
-    
-    if label == "right_values" or label == "right_values_random":
-        for i in range(len(x_values)):
-            x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1]
-        x_label = "v1p1"
-        saving_path = "tuning_curves/right_values/"
-        if not os.path.exists(saving_path):
-            os.makedirs(saving_path)
-        saving_path = "tuning_curves/right_values/"+network+" network.png"
-        title = "Firing rates of the most relevant neurons\nencoding for "+\
-                label+" in the "+network+" network"
-        if label == "right_values_random":
-            color = "black"
-            saving_path = "tuning_curves/right_values/"+network+" network - random.png"
-            title = "Firing rates of "+str(len(relevant_neurons))+\
-                    " random neurons\nsorted by right_values in the "+network+" network"
-    
-    #----------------------------------------------------------------------------------------#            
-    
-    if label == "left_values" or label == "left_values_random":
-        for i in range(len(x_values)):
-            x_values[i] = stimuli_rid[i][2]*stimuli_rid[i][3]
-        x_label = "v2p2"
-        saving_path = "tuning_curves/left_values/"
-        if not os.path.exists(saving_path):
-            os.makedirs(saving_path)
-        saving_path = "tuning_curves/left_values/"+network+" network.png"
-        title = "Firing rates of the most relevant neurons\nencoding for "+\
-                label+" in the "+network+" network"
-        if label == "left_values_random":
-            color = "black"
-            saving_path = "tuning_curves/left_values/"+network+" network - random.png"
-            title = "Firing rates of "+str(len(relevant_neurons))+\
-                    " random neurons\nsorted by left_values in the "+network+" network"
+
                 
     #----------------------------------------------------------------------------------------#
     
@@ -633,17 +637,41 @@ def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, l
      
     #----------------------------------------------------------------------------------------#
     
+    indices = np.argsort(x_values)
+    x_values_ordered = x_values[indices]
+    frates_rid_ordered = frates_rid.T[indices].T
+    
+    split_indices = np.where(x_values_ordered[:-1] != x_values_ordered[1:])[0] + 1
+    split_x_values_ordered = np.split(x_values_ordered, split_indices)
+    split_frates_ordered = np.split(frates_rid_ordered.T, split_indices)
+    
+    
+    tc_mean = np.zeros(10)
+    tc_std = np.zeros(10)
+    x_mean = np.zeros(len(split_frates_ordered))
+    for b, block in enumerate(split_frates_ordered):
+        tc_mean = np.vstack((tc_mean, np.mean(block, axis=0)))
+        tc_std = np.vstack((tc_std, np.std(block, axis=0)))
+        x_mean[b] = np.mean(split_x_values_ordered[b])
+        #print("\nhere\n", block, "\nhere\n")
+    #print(tc_mean)
+    tc_mean = tc_mean[1:, :]
+    tc_std = tc_std[1:, :]
+    
     fig, axx = plt.subplots(5, 2, figsize=(15, 20))
     axx = axx.reshape(-1)
     for n, ax in enumerate(axx):
         for i in range(len(x_values)):
-            ax.plot(x_values[i], frates_rid[n, i], "o", markersize=5, color=color)
+            ax.plot(x_values_ordered[i], frates_rid_ordered[n, i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
             #ax.text(x_values[i]+0.03, frates_rid[n, i], str(stimuli_rid[i,:]), fontsize=10)
             ax.set_title("neuron %i" %(relevant_neurons[n]), size=20)
             ax.tick_params(axis='x', labelsize=15)
             ax.tick_params(axis='y', labelsize=15)
             ax.set_xlabel(x_label, size=15)
             ax.set_ylabel("firing rate", size=15)
+        #for i in range(len(tc_mean)):
+        ax.plot(x_mean, tc_mean[:, n], "D-", markersize=5, zorder=1, color="black")
+        ax.vlines(x_mean, tc_mean[:, n] - tc_std[:, n], tc_mean[:, n] + tc_std[:, n], color="black", linewidth=2, zorder=2)
     plt.tight_layout()      
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.suptitle(title, size=25)
@@ -652,10 +680,20 @@ def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, l
     for n in range(frates_rid.shape[0]):
         frates_rid[n,:] *= relevant_weights[n]
     lin_comb = np.sum(frates_rid, axis=0)
+    lin_comb_ordered = lin_comb[indices]
+    split_lin_comb_ordered = np.split(lin_comb_ordered, split_indices)
+    
+    lin_comb_mean = np.zeros(len(split_lin_comb_ordered))
+    lin_comb_std = np.zeros(len(split_lin_comb_ordered))
+    for b, block in enumerate(split_lin_comb_ordered):
+        lin_comb_mean[b] = np.mean(block)
+        lin_comb_std[b] = np.std(block)
     
     plt.figure(figsize=(16,6))
     for i in range(len(x_values)):
-        plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color)
+        plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
+    plt.plot(x_mean, lin_comb_mean, "D-", markersize=5, zorder=1, color="black")
+    plt.vlines(x_mean, lin_comb_mean - lin_comb_std, lin_comb_mean + lin_comb_std, color="black", linewidth=2, zorder=1)
     plt.title("Average over all relevant neurons\n"+network+" network on "+label, size=20)   
     plt.tick_params(axis='x', labelsize=15)
     plt.tick_params(axis='y', labelsize=15)
@@ -668,4 +706,3 @@ def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, l
     if label[-7:] == "_random":
         label = label[:-7]
         plt.savefig("tuning_curves/"+label+"/"+network+" network - random_LinComb.png")  
-"""
