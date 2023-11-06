@@ -135,8 +135,8 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
     split_frates_ordered = np.split(frates_rid_ordered.T, split_indices)
     
     
-    tc_mean = np.zeros(10)
-    tc_std = np.zeros(10)
+    tc_mean = np.zeros(len(relevant_neurons))
+    tc_std = np.zeros(len(relevant_neurons))
     x_mean = np.zeros(len(split_frates_ordered))
     for b, block in enumerate(split_frates_ordered):
         tc_mean = np.vstack((tc_mean, np.mean(block, axis=0)))
@@ -147,7 +147,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
     tc_mean = tc_mean[1:, :]
     tc_std = tc_std[1:, :]
     
-    fig, axx = plt.subplots(5, 2, figsize=(15, 20))
+    fig, axx = plt.subplots(int(len(relevant_neurons)/2), 2, figsize=(15, 20))
     axx = axx.reshape(-1)
     for n, ax in enumerate(axx):
         for i in range(len(x_values)):
@@ -220,20 +220,23 @@ def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, l
     block_chain = block_chain[1:].T
     frates_rid = block_chain
     
-    stimuli_rid = np.zeros((len(split_stimuli),4))    
+    stimuli_rid = np.zeros((len(split_stimuli), 4))    
     for i, segment in enumerate(split_stimuli):
         stimuli_rid[i] = segment[0]
         
     x_values = np.zeros(stimuli_rid.shape[0])
-            
-    if network == "actor":
-        color = "purple"
-    else:
-        color = "green"
+    color = []
     
     for i in range(len(x_values)):
-        x_values[i] = stimuli_rid[i][1] / stimuli_rid[i][3]
-    x_label = "p1/p2"
+        x_values[i] = (stimuli_rid[i][1]) / (stimuli_rid[i][3])
+        if stimuli_rid[i][0] == 1:
+            color.append("violet")
+        elif stimuli_rid[i][0] == 3:
+            color.append("lime")
+        else:
+            color.append("black")
+    x_label = "v1p1/v2p2"
+    
     saving_path = "tuning_curves/global_values/"
     if not os.path.exists(saving_path):
         os.makedirs(saving_path)
@@ -246,31 +249,31 @@ def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, l
         title = "Firing rates of "+str(len(relevant_neurons))+\
                 " random neurons\nsorted by global_values in the "+network+" network"
          
-    indices = np.argsort(x_values)
-    x_values_ordered = x_values[indices]
-    frates_rid_ordered = frates_rid.T[indices].T
+    #indices = np.argsort(x_values)
+    #x_values_ordered = x_values[indices]
+    #frates_rid_ordered = frates_rid.T[indices].T
     
-    split_indices = np.where(x_values_ordered[:-1] != x_values_ordered[1:])[0] + 1
-    split_x_values_ordered = np.split(x_values_ordered, split_indices)
-    split_frates_ordered = np.split(frates_rid_ordered.T, split_indices)
-    
-    
-    tc_mean = np.zeros(len(relevant_neurons))
-    tc_std = np.zeros(len(relevant_neurons))
-    x_mean = np.zeros(len(split_frates_ordered))
-    for b, block in enumerate(split_frates_ordered):
-        tc_mean = np.vstack((tc_mean, np.mean(block, axis=0)))
-        tc_std = np.vstack((tc_std, np.std(block, axis=0)))
-        x_mean[b] = np.mean(split_x_values_ordered[b])
+    #split_indices = np.where(x_values_ordered[:-1] != x_values_ordered[1:])[0] + 1
+    #split_x_values_ordered = np.split(x_values_ordered, split_indices)
+    #split_frates_ordered = np.split(frates_rid_ordered.T, split_indices)
+    #
+    #tc_mean = np.zeros(len(relevant_neurons))
+    #tc_std = np.zeros(len(relevant_neurons))
+    #x_mean = np.zeros(len(split_frates_ordered))
+    #for b, block in enumerate(split_frates_ordered):
+    #    tc_mean = np.vstack((tc_mean, np.mean(block, axis=0)))
+    #    tc_std = np.vstack((tc_std, np.std(block, axis=0)))
+    #    x_mean[b] = np.mean(split_x_values_ordered[b])
+    #    
+    #tc_mean = tc_mean[1:, :]
+    #tc_std = tc_std[1:, :]
         
-    tc_mean = tc_mean[1:, :]
-    tc_std = tc_std[1:, :]
-    
     fig, axx = plt.subplots(int(len(relevant_neurons)/2), 2, figsize=(15, 200))
     axx = axx.reshape(-1)
     for n, ax in enumerate(axx):
         for i in range(len(x_values)):
-            ax.plot(x_values_ordered[i], frates_rid_ordered[n, i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
+            ax.plot(x_values[i], frates_rid[n, i], "o", markersize=5, color=color[i], zorder=0, alpha=0.7)
+            #ax.plot(x_values_ordered[i], frates_rid_ordered[n, i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
             #ax.text(x_values[i]+0.03, frates_rid[n, i], str(stimuli_rid[i,:]), fontsize=10)
             ax.set_title("neuron %i" %(relevant_neurons[n]), size=20)
             ax.tick_params(axis='x', labelsize=15)
@@ -278,43 +281,42 @@ def new_tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, l
             ax.set_xlabel(x_label, size=15)
             ax.set_ylabel("firing rate", size=15)
         #for i in range(len(tc_mean)):
-        ax.plot(x_mean, tc_mean[:, n], "D-", markersize=5, zorder=1, color="black")
-        ax.vlines(x_mean, tc_mean[:, n] - tc_std[:, n], tc_mean[:, n] + tc_std[:, n], color="black", linewidth=2, zorder=2)
+        #ax.plot(x_mean, tc_mean[:, n], "D-", markersize=5, zorder=1, color="black")
+        #ax.vlines(x_mean, tc_mean[:, n] - tc_std[:, n], tc_mean[:, n] + tc_std[:, n], color="black", linewidth=2, zorder=2)
     plt.tight_layout()      
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.suptitle(title, size=25)
     plt.savefig(saving_path)  
     
-    relevant_weights=np.ones(128)
-    for n in range(frates_rid.shape[0]):
-        frates_rid[n,:] *= relevant_weights[n]
-    lin_comb = np.sum(frates_rid, axis=0)
-    lin_comb_ordered = lin_comb[indices]
-    split_lin_comb_ordered = np.split(lin_comb_ordered, split_indices)
+    #for n in range(frates_rid.shape[0]):
+    #    frates_rid[n,:] *= relevant_weights[n]
+    #lin_comb = np.sum(frates_rid, axis=0)
+    #lin_comb_ordered = lin_comb[indices]
+    #split_lin_comb_ordered = np.split(lin_comb_ordered, split_indices)
+    #
+    #lin_comb_mean = np.zeros(len(split_lin_comb_ordered))
+    #lin_comb_std = np.zeros(len(split_lin_comb_ordered))
+    #for b, block in enumerate(split_lin_comb_ordered):
+    #    lin_comb_mean[b] = np.mean(block)
+    #    lin_comb_std[b] = np.std(block)
     
-    lin_comb_mean = np.zeros(len(split_lin_comb_ordered))
-    lin_comb_std = np.zeros(len(split_lin_comb_ordered))
-    for b, block in enumerate(split_lin_comb_ordered):
-        lin_comb_mean[b] = np.mean(block)
-        lin_comb_std[b] = np.std(block)
-    
-    plt.figure(figsize=(16,6))
-    for i in range(len(x_values)):
-        plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
-    plt.plot(x_mean, lin_comb_mean, "D-", markersize=5, zorder=1, color="black")
-    plt.vlines(x_mean, lin_comb_mean - lin_comb_std, lin_comb_mean + lin_comb_std, color="black", linewidth=2, zorder=1)
-    plt.title("Average over all relevant neurons\n"+network+" network on "+label, size=20)   
-    plt.tick_params(axis='x', labelsize=15)
-    plt.tick_params(axis='y', labelsize=15)
-    plt.xlabel(x_label, size=15)
-    plt.ylabel("firing rate", size=15)
-    
-    if label[-7:] != "_random":
-        plt.savefig("tuning_curves/"+label+"/"+network+" network_LinComb.png")
-
-    if label[-7:] == "_random":
-        label = label[:-7]
-        plt.savefig("tuning_curves/"+label+"/"+network+" network - random_LinComb.png")  
+    #plt.figure(figsize=(16,6))
+    #for i in range(len(x_values)):
+    #    plt.plot(x_values[i], lin_comb[i], "o", markersize=5, color=color, zorder=0, alpha=0.7)
+    #plt.plot(x_mean, lin_comb_mean, "D-", markersize=5, zorder=1, color="black")
+    #plt.vlines(x_mean, lin_comb_mean - lin_comb_std, lin_comb_mean + lin_comb_std, color="black", linewidth=2, zorder=1)
+    #plt.title("Average over all relevant neurons\n"+network+" network on "+label, size=20)   
+    #plt.tick_params(axis='x', labelsize=15)
+    #plt.tick_params(axis='y', labelsize=15)
+    #plt.xlabel(x_label, size=15)
+    #plt.ylabel("firing rate", size=15)
+    #
+    #if label[-7:] != "_random":
+    #    plt.savefig("tuning_curves/"+label+"/"+network+" network_LinComb.png")
+#
+    #if label[-7:] == "_random":
+    #    label = label[:-7]
+    #    plt.savefig("tuning_curves/"+label+"/"+network+" network - random_LinComb.png")  
         
 #############################################################################################################
 #============================================================================================================    

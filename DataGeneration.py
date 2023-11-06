@@ -235,7 +235,6 @@ def special_dataset_gen(iterations=100):
                             new_overall_values.append(overall_values[i])
                             new_timeav_values.append(timeav_values[i])
                                 
-                        print(frates_actor.shape, frates_critic.shape)
                         new_frates_actor = np.vstack((new_frates_actor, frates_actor.T))
                         new_frates_critic = np.vstack((new_frates_critic, frates_critic.T))
                         new_stimuli = np.vstack((new_stimuli, stimuli))

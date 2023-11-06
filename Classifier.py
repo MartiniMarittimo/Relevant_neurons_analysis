@@ -188,7 +188,7 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
         elif model == 'svm':
             C_svm = param_mag[k]
 
-        nb_epochs = 250
+        nb_epochs = 50
 
         test_scores = np.zeros(nb_epochs)
 
@@ -219,14 +219,16 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
             if model=='perceptron':
                 clf = Perceptron(tol=1e-3, random_state=0)
             elif model == 'perceptronL1':
-                clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
+                clf = Perceptron(tol=1e-5, random_state=0, penalty='l1', alpha=C_perc, max_iter=10000, n_iter_no_change=100)
             elif model == 'svm':
                 clf = svm.LinearSVC(penalty='l1', C=C_svm, dual = False, max_iter=1000)
 
             clf.fit(X_train_trial, Y_train_trial)
+            train_score = clf.score(X_train_trial, Y_train_trial)
             test_score = clf.score(X_test_trial, Y_test_trial)
 
-            test_scores[i] = test_score
+            #test_scores[i] = test_score
+            test_scores[i] = train_score
 
         list_test_scores.append(test_scores)
         average_test_scores.append(np.mean(test_scores))
