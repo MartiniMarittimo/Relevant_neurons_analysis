@@ -166,7 +166,7 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
     
     saving_path = 'clf_data_'+size+'/'+label
     if not os.path.exists(saving_path):
-            os.makedirs(saving_path)
+        os.makedirs(saving_path)
             
     model = model
     
@@ -174,12 +174,13 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
     mean = np.mean(original_X)
     std = mean * noise_mag
     X = copy.deepcopy(original_X)
-    #noise = np.random.normal(0, std, X.shape)
-    #X += noise
+    noise = np.random.normal(0, std, X.shape)
+    X += noise
         
     list_test_scores = []
     average_test_scores = []
     list_test_random_scores = []
+    list_nb_big_ws = []
     
     for k in range(len(param_mag)):
         
@@ -191,6 +192,7 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
         nb_epochs = 50
 
         test_scores = np.zeros(nb_epochs)
+        ws = np.zeros(128)
 
         nb_trials = X.shape[0]
         percentage_training_set = 0.8
@@ -212,24 +214,29 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
             Y_train_trial = Y[indeces_train]
             X_test_trial = X[indeces_test,:]
             Y_test_trial = Y[indeces_test]
-            
-            noise = np.random.normal(0, std, X_train_trial.shape)
-            X_train_trial += noise
 
             if model=='perceptron':
                 clf = Perceptron(tol=1e-3, random_state=0)
             elif model == 'perceptronL1':
-                clf = Perceptron(tol=1e-5, random_state=0, penalty='l1', alpha=C_perc, max_iter=10000, n_iter_no_change=100)
+                clf = Perceptron(tol=1e-5, random_state=0, penalty='l1', alpha=C_perc,\
+                                 max_iter=10000, n_iter_no_change=100)
             elif model == 'svm':
                 clf = svm.LinearSVC(penalty='l1', C=C_svm, dual = False, max_iter=1000)
 
             clf.fit(X_train_trial, Y_train_trial)
             train_score = clf.score(X_train_trial, Y_train_trial)
             test_score = clf.score(X_test_trial, Y_test_trial)
+            test_scores[i] = test_score
+            #test_scores[i] = train_score
+            
+            w = clf.coef_
+            w = w.reshape(-1)
+            ws = np.vstack((ws, w))
+        
+        ws = np.mean(ws, axis=0)
+        nb_big_ws = np.count_nonzero(np.abs(ws) > 1)
 
-            #test_scores[i] = test_score
-            test_scores[i] = train_score
-
+        list_nb_big_ws.append(nb_big_ws)
         list_test_scores.append(test_scores)
         average_test_scores.append(np.mean(test_scores))
 
@@ -260,7 +267,8 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
             if model=='perceptron':
                 clf = Perceptron(tol=1e-3, random_state=0)
             elif model == 'perceptronL1':
-                clf == Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
+                clf = Perceptron(tol=1e-5, random_state=0, penalty='l1', alpha=C_perc,\
+                                 max_iter=10000, n_iter_no_change=100)            
             elif model == 'svm':
                 clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
 
@@ -273,7 +281,9 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
 
         print("average over "+str(nb_epochs)+" epochs of test scores: %.2f" %(np.mean(test_scores)))
         print("average over "+str(nb_epochs)+" epochs of test random scores: %.2f" %(np.mean(test_random_scores)))        
-     
+    
+    #----------------------------------------------------------------------------------------#
+    
     fig, axx = plt.subplots(int(len(param_mag)/2), 2, figsize=(12, 20))
     axx = axx.reshape(-1)
     for i, ax in enumerate(axx):
@@ -291,23 +301,125 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
     plt.suptitle("TEST SCORES\n"+network+" network on "+label+\
                  "\n(mean neuronal activity $\mu$=%.2f)" %(mean), fontsize=20)
     plt.savefig(saving_path+'/hist_regularization: '+network+' - '+label+'.png')
-    plt.close()
+    plt.close()    
     
-    plt.figure(figsize=(10,5))
-    plt.plot(param_mag, average_test_scores, "-^", markersize=10, color="lightseagreen")
+    fig, ax1 = plt.subplots(figsize=(15, 7.5))
+    line1, = ax1.plot(param_mag, average_test_scores, "-^", markersize=10, color="lightseagreen", label="mean test scores")
     for i in range(len(param_mag)):
-        plt.text(param_mag[i], average_test_scores[i], "%.3f" %(average_test_scores[i]), fontsize=10)
-    plt.xscale("log")
-    plt.title("Mean test scores over regularization parameter magnitude\n("+network+" network on "+label+", noise = %.2f)" %(noise_mag), fontsize=20)
+        ax1.text(param_mag[i], average_test_scores[i], "%.3f" %(average_test_scores[i]), fontsize=10)
+    ax1.set_xlabel("regularization parameter magnitude", size=15)
+    ax1.set_ylabel("mean test score", size=15)
     plt.xticks(size=15)
     plt.yticks(size=15)
-    plt.xlabel("regularization parameter magnitude", size=15)
-    plt.ylabel("mean test score", size=15)
+    ax2 = ax1.twinx()
+    line2, = ax2.plot(param_mag, list_nb_big_ws, "-^", markersize=10, color="teal", label="# relevant weights")
+    for i in range(len(param_mag)):
+        ax2.text(param_mag[i], list_nb_big_ws[i], "%i" %(list_nb_big_ws[i]), fontsize=10)
+    ax2.set_ylabel("# relevant weights", size=15)
+    plt.yticks(size=15)
+    plt.xscale("log")
+    lines = [line1, line2]
+    labels = [line.get_label() for line in lines]
+    plt.legend(lines, labels, fontsize=15)
+    plt.title("Mean test scores over regularization parameter magnitude\n("+network+" network on "+label+", noise = %.1f)" %(noise_mag), fontsize=20)
     plt.savefig(saving_path+'/'+network+' network mean test scores over regularization.png')
+    
     
 #############################################################################################################
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+
+def actor_vs_critic(Xa, Xc, Y, model, param_mag, label, noise_mag, size):
+    
+    saving_path = 'clf_data_'+size+'/'+label
+    if not os.path.exists(saving_path):
+        os.makedirs(saving_path)
+            
+    model = model
+    
+    list_dataset = [Xa, Xc]
+    list_test_scores = []
+    average_test_scores = []
+    list_test_random_scores = []
+    
+    for k in range(2):
+        
+        original_X = copy.deepcopy(list_dataset[k])
+        mean = np.mean(original_X)
+        std = mean * noise_mag
+        X = copy.deepcopy(original_X)
+        noise = np.random.normal(0, std, X.shape)
+        X += noise
+        
+        if model == 'perceptronL1':
+            C_perc = param_mag[k]
+        elif model == 'svm':
+            C_svm = param_mag[k]
+
+        nb_epochs = 50
+
+        test_scores = np.zeros(nb_epochs)
+        ws = np.zeros(128)
+
+        nb_trials = X.shape[0]
+        percentage_training_set = 0.8
+        nb_indeces_training = int(nb_trials*percentage_training_set)
+
+        for i in range(nb_epochs):
+
+            all_indeces = np.arange(0, nb_trials)
+
+            if i == 0:
+                indeces_train = all_indeces[0:nb_indeces_training]
+                indeces_test = all_indeces[nb_indeces_training:]
+            else:
+                np.random.shuffle(all_indeces)
+                indeces_train = all_indeces[0:nb_indeces_training]
+                indeces_test = all_indeces[nb_indeces_training:]
+
+            X_train_trial = X[indeces_train,:]
+            Y_train_trial = Y[indeces_train]
+            X_test_trial = X[indeces_test,:]
+            Y_test_trial = Y[indeces_test]
+
+            if model=='perceptron':
+                clf = Perceptron(tol=1e-3, random_state=0)
+            elif model == 'perceptronL1':
+                clf = Perceptron(tol=1e-5, random_state=0, penalty='l1', alpha=C_perc,
+                                 max_iter=10000, n_iter_no_change=100)
+            elif model == 'svm':
+                clf = svm.LinearSVC(penalty='l1', C=C_svm, dual = False, max_iter=1000)
+
+            clf.fit(X_train_trial, Y_train_trial)
+            train_score = clf.score(X_train_trial, Y_train_trial)
+            test_score = clf.score(X_test_trial, Y_test_trial)
+            test_scores[i] = test_score
+            #test_scores[i] = train_score
+            
+        list_test_scores.append(test_scores)
+        average_test_scores.append(np.mean(test_scores))       
+    
+    #----------------------------------------------------------------------------------------#
+    
+    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+    #axx = axx.reshape(-1)
+    bin_edges = np.linspace(0.2, 1, 40)
+    ax.hist(list_test_scores[0], label="test scores", edgecolor="k", alpha=0.5)
+    ax.hist(list_test_scores[1], label="test scores", edgecolor="k", alpha=0.5)
+    ax.set_title("$\lambda_a$=%f, $\lambda_c$=%f" %(param_mag[0], param_mag[1]), fontsize=15)
+    ax.tick_params(axis='x', labelsize=15)
+    ax.tick_params(axis='y', labelsize=15)
+    ax.set_xlabel("mean accuracy", size=15)
+    ax.set_ylabel("occurences", size=15)
+    ax.legend(fontsize=15, loc="upper left")
+    plt.tight_layout()      
+    plt.tight_layout(rect=[0, 0.03, 1, 0.93])
+    plt.suptitle("TEST SCORES on "+label, fontsize=20)
+    plt.savefig(saving_path+'/hist_actorVScritic.png')
+    
+#############################################################################################################
+#============================================================================================================    
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     
     
 def rel_neurons(X, Y, model, C, network, label, noise_mag, size):
 
