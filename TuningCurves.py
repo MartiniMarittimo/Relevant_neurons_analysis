@@ -54,7 +54,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
     else:
         color = "green"
     
-    if label == "actions" or label == "actions_random":
+    if label == "ACTIONS" or label == "ACTIONS":
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1] - stimuli_rid[i][2]*stimuli_rid[i][3]
         x_label = "v1p1-v2p2"
@@ -64,7 +64,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         saving_path = "tuning_curves/actions/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+"' values in the "+network+" network"
-        if label == "actions_random":
+        if label == "ACTIONS":
             color = "black"
             saving_path = "tuning_curves/actions/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
@@ -72,7 +72,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
    
     #----------------------------------------------------------------------------------------#            
     
-    if label == "right_values" or label == "right_values_random":
+    if label == "RIGHT VALUES" or label == "RIGHT VALUES_random":
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1]
         x_label = "v1p1"
@@ -82,7 +82,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         saving_path = "tuning_curves/right_values/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+" in the "+network+" network"
-        if label == "right_values_random":
+        if label == "RIGHT VALUES_random":
             color = "black"
             saving_path = "tuning_curves/right_values/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
@@ -90,7 +90,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
     
     #----------------------------------------------------------------------------------------#            
     
-    if label == "left_values" or label == "left_values_random":
+    if label == "LEFT VALUES" or label == "LEFT VALUES_random":
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][2]*stimuli_rid[i][3]
         x_label = "v2p2"
@@ -100,7 +100,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         saving_path = "tuning_curves/left_values/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+" in the "+network+" network"
-        if label == "left_values_random":
+        if label == "LEFT VALUES_random":
             color = "black"
             saving_path = "tuning_curves/left_values/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
@@ -108,7 +108,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
                 
     #----------------------------------------------------------------------------------------#
     
-    if label == "global_values" or label == "global_values_random":
+    if label == "GLOBAL VALUES" or label == "GLOBAL VALUES_random":
         for i in range(len(x_values)):
             x_values[i] = np.max((stimuli_rid[i][0]*stimuli_rid[i][1], stimuli_rid[i][2]*stimuli_rid[i][3]))
         x_label = "max(v1p1, v2p2)"
@@ -118,7 +118,7 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         saving_path = "tuning_curves/global_values/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+" in the "+network+" network"
-        if label == "global_values_random":
+        if label == "GLOBAL VALUES_random":
             color = "black"
             saving_path = "tuning_curves/global_values/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
@@ -353,6 +353,7 @@ def critic_tuning_curves(timeav_values, overall_values):
         if global_values[i] == 2.25:
             color="green"
             lista6.append(timeav_values[i])
+            
         plt.plot(global_values[i], timeav_values[i], "o", color=color, zorder=1)
         
     plt.axhline(0.25, color="yellow", zorder=0)
@@ -381,7 +382,6 @@ def critic_tuning_curves(timeav_values, overall_values):
     for i in range(6):
         plt.plot(x_values[i], medie[i], "D", color="black", markersize=10, zorder=2)
         plt.vlines(x_values[i]+0.02, medie[i] - stds[i], medie[i] + stds[i], color="black", linewidth=3, zorder=2)
-    
     
     plt.xlabel("overall value", size=20)
     plt.ylabel("critic output", size=20)

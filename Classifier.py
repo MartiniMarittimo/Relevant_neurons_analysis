@@ -278,7 +278,8 @@ def regularization_intensity(X, Y, model, param_mag, network, label, noise_mag, 
             test_random_scores[i] = test_score
 
         list_test_random_scores.append(test_random_scores)
-
+    
+        print(k)
         print("average over "+str(nb_epochs)+" epochs of test scores: %.2f" %(np.mean(test_scores)))
         print("average over "+str(nb_epochs)+" epochs of test random scores: %.2f" %(np.mean(test_random_scores)))        
     
@@ -401,20 +402,18 @@ def actor_vs_critic(Xa, Xc, Y, model, param_mag, label, noise_mag, size):
     
     #----------------------------------------------------------------------------------------#
     
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+    fig, ax = plt.subplots(1, 1, figsize=(9, 5))
     #axx = axx.reshape(-1)
-    bin_edges = np.linspace(0.2, 1, 40)
-    ax.hist(list_test_scores[0], label="test scores", edgecolor="k", alpha=0.5)
-    ax.hist(list_test_scores[1], label="test scores", edgecolor="k", alpha=0.5)
-    ax.set_title("$\lambda_a$=%f, $\lambda_c$=%f" %(param_mag[0], param_mag[1]), fontsize=15)
+    bin_edges = np.linspace(0.2, 1, 16)
+    ax.hist(list_test_scores[0], bins=bin_edges, label="actor", color="purple", edgecolor="k", alpha=0.5)
+    ax.hist(list_test_scores[1], bins=bin_edges, label="critic", color="green", edgecolor="k", alpha=0.5)
     ax.tick_params(axis='x', labelsize=15)
     ax.tick_params(axis='y', labelsize=15)
     ax.set_xlabel("mean accuracy", size=15)
     ax.set_ylabel("occurences", size=15)
     ax.legend(fontsize=15, loc="upper left")
-    plt.tight_layout()      
-    plt.tight_layout(rect=[0, 0.03, 1, 0.93])
-    plt.suptitle("TEST SCORES on "+label, fontsize=20)
+    plt.title("test scores on "+label+"\n($\lambda_A$="+str(param_mag[0])+", $\lambda_C$="+str(param_mag[1])+")", fontsize=20)
+    #plt.tight_layout(rect=(0,0,1,1.2))
     plt.savefig(saving_path+'/hist_actorVScritic.png')
     
 #############################################################################################################
@@ -433,79 +432,103 @@ def rel_neurons(X, Y, model, C, network, label, noise_mag, size):
         C_perc = C
     elif model == 'svm':
         C_svm = C
+        
+    original_X = copy.deepcopy(X)
+    mean = np.mean(original_X)
+    std = mean * noise_mag 
+    noise = np.random.normal(0, std, original_X.shape)
     
-    mean = np.mean(X)
-    std = mean * noise_mag
-    #noise = np.random.normal(0, std, X.shape)
-    #X += noise
-    
-    nb_trials = X.shape[0]
+    nb_trials = original_X.shape[0]
     percentage_training_set = 0.8
     nb_indeces_training = int(nb_trials*percentage_training_set)
-    all_indeces = np.arange(0, nb_trials)
-    np.random.shuffle(all_indeces)
-    
-    indeces_train = all_indeces[0:nb_indeces_training]
-    indeces_test = all_indeces[nb_indeces_training:]
-    X_train_trial = X[indeces_train,:]
-    Y_train_trial = Y[indeces_train]
-    X_test_trial = X[indeces_test,:]
-    Y_test_trial = Y[indeces_test]
-    
-    noise = np.random.normal(0, std, X_train_trial.shape)
-    X_train_trial += noise
-    
-    if model=='perceptron':
-        clf = Perceptron(tol=1e-3, random_state=0)
-    elif model == 'perceptronL1':
-        clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
-    elif model == 'svm':
-        clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
         
-    clf.fit(X_train_trial, Y_train_trial)
-    training_score = clf.score(X_train_trial, Y_train_trial)
-    test_score = clf.score(X_test_trial, Y_test_trial)
-    print("----------\ntraining score: %.3f" %(training_score))
-    print("test score: %.3f" %(test_score), "\n----------")
+    many_rel_neurons = []
+    many_rel_values = []
     
-    w = clf.coef_
-    b = clf.intercept_
+    for i in range(10):
+        
+        X = copy.deepcopy(original_X)
+        X += noise
     
-    relevant_neurons = []
-    relevant_neurons_values = []
-    relevant_neurons_values_abs = []
-    plt.figure(figsize=(15,7))
-    plt.plot(w[0,:])
-    for i in range(len(w[0,:])):
-        if w[0,i] != 0:
-            plt.text(i, w[0,i], "(%i, %.3f)" %(i, w[0,i]), style='italic', fontsize=15)
-            relevant_neurons_values.append(w[0,i])
-            relevant_neurons_values_abs.append(np.abs(w[0,i]))
-            relevant_neurons.append(i)
-    plt.title(network+" network relevant neurons for "+label, fontsize=20);
-    plt.xticks(size=15)
-    plt.yticks(size=15)
+        all_indeces = np.arange(0, nb_trials)
+        np.random.shuffle(all_indeces)
+
+        indeces_train = all_indeces[0:nb_indeces_training]
+        indeces_test = all_indeces[nb_indeces_training:]
+        X_train_trial = X[indeces_train,:]
+        Y_train_trial = Y[indeces_train]
+        X_test_trial = X[indeces_test,:]
+        Y_test_trial = Y[indeces_test]
+
+        if model=='perceptron':
+            clf = Perceptron(tol=1e-3, random_state=0)
+        elif model == 'perceptronL1':
+            clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
+        elif model == 'svm':
+            clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
+
+        clf.fit(X_train_trial, Y_train_trial)
+        training_score = clf.score(X_train_trial, Y_train_trial)
+        test_score = clf.score(X_test_trial, Y_test_trial)
+
+        w = clf.coef_
+        b = clf.intercept_
+
+        relevant_neurons = []
+        relevant_neurons_values = []
+        relevant_neurons_values_abs = []
+        #plt.figure(figsize=(15,7))
+        #plt.plot(w[0,:])
+        for i in range(len(w[0,:])):
+            if w[0,i] != 0:
+                #plt.text(i, w[0,i], "(%i, %.3f)" %(i, w[0,i]), style='italic', fontsize=15)
+                relevant_neurons_values.append(w[0,i])
+                relevant_neurons_values_abs.append(np.abs(w[0,i]))
+                relevant_neurons.append(i)
+        #plt.title(network+" network relevant neurons for "+label, fontsize=20);
+        #plt.xticks(size=15)
+        #plt.yticks(size=15)
+
+        relevant_size = 10
+        sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons))
+        relevant_neurons = [pair[1] for pair in sorted_pairs]
+        relevant_neurons.reverse()
+        relevant_neurons = relevant_neurons[:relevant_size]
+        sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons_values))
+        relevant_neurons_values = [pair[1] for pair in sorted_pairs]
+        relevant_neurons_values.reverse()
+        relevant_neurons_values = relevant_neurons_values[:relevant_size]
+        print(relevant_neurons)
+        #print(relevant_neurons_values)
+        
+        many_rel_neurons.append(relevant_neurons)
+        many_rel_values.append(w[0,:])
     
-    relevant_size = 10
-    sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons))
-    relevant_neurons = [pair[1] for pair in sorted_pairs]
-    relevant_neurons.reverse()
-    relevant_neurons = relevant_neurons[:relevant_size]
-    sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons_values))
-    relevant_neurons_values = [pair[1] for pair in sorted_pairs]
-    relevant_neurons_values.reverse()
-    relevant_neurons_values = relevant_neurons_values[:relevant_size]
+    #many_rel_neurons = np.concatenate(many_rel_neurons)
+    #value_counts = np.bincount(many_rel_neurons)
+    #most_common_indices = np.argsort(value_counts)[-10:][::-1]
+    #relevant_neurons = most_common_indices[:10]
+    
+    many_rel_neurons = np.array(many_rel_neurons)
+    most_common_values = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=many_rel_neurons)
+    used_values = set()
+    most_common_values = [next_most_common if (next_most_common := np.argsort(np.bincount(many_rel_neurons[:, i]))[-2]) in used_values else (used_values.add(next_most_common), most_common_values[i])[1] for i in range(len(most_common_values))]
+
+    
+    many_rel_values = np.array(many_rel_values)
+    many_rel_values = np.mean(many_rel_values, axis=0)
+    relevant_weights = many_rel_values[relevant_neurons]
     
     check = True
-    random_neurons = np.zeros(len(relevant_neurons))
+    random_neurons = np.zeros(relevant_size)
     while check is True:
         random_neurons = np.random.randint(0, 128, 10)
         bool_array = np.isin(random_neurons, relevant_neurons)
         check = any(bool_array)
-    random_weights = w[0, random_neurons]
+    random_weights = many_rel_values[random_neurons]
     
     array1_list = np.asarray(relevant_neurons).tolist()
-    array2_list = np.asarray(relevant_neurons_values).tolist()
+    array2_list = np.asarray(relevant_weights).tolist()
     array3_list = random_neurons.tolist()
     array4_list = random_weights.tolist()
     
