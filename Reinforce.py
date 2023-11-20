@@ -9,6 +9,7 @@ import time
 
 import FullRankRNN as rnn
 import MONKEYtask as mky
+import SL as sln
 
 
 
@@ -304,7 +305,7 @@ class REINFORCE:
         
         observations, rewards, actions, log_action_probs, entropies, values,\
         trial_begins, errors, frates_col_actor, frates_col_critic,\
-        time_av_values_col, final_actions, global_values = self.experience(n_trs, training=True)
+        time_av_values_col, final_actions, global_values, stimuli = self.experience(n_trs, training=True)
 
         cum_rho = np.zeros(0)
         tau_r = np.inf  # Song et al. set this value to 10s only for reaction time tasks
@@ -437,3 +438,18 @@ class REINFORCE:
         #torch.save(s_o_critic, 'models/s_o_critic.pt')
             
         print("\nDEVICE: " + str(device) + ". It took %.2f m for %i epochs. %i trials per epoch." %((time.time()-begin)/60, epochs, n_trs))
+        
+# ===============================================================================================================
+    
+    def s_learning(self, input, target, mask, lr=1e-2):
+        
+        losses = sln.train(self.actor_network, input, target, mask, n_epochs=50, lr=lr, batch_size=32)
+        
+        copied_actor = copy.deepcopy(self.actor_network.state_dict())
+        torch.save(copied_actor, "models/SL_actor_network.pt".format(self.hidden_size))
+        
+        return losses
+
+    
+        
+    

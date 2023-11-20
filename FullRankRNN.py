@@ -16,6 +16,7 @@ from contextlib import redirect_stdout
 #torch.backends.cudnn.benchmark = False
 #torch.use_deterministic_algorithms(True)
 
+
 class FullRankRNN(nn.Module): # FullRankRNN is a child class, nn.Module is the parent class
 
     def __init__(self, input_size, hidden_size, output_size, noise_std, alpha=0.2, rho=1, beta=1,
@@ -160,16 +161,6 @@ class FullRankRNN(nn.Module): # FullRankRNN is a child class, nn.Module is the p
         
         if self.actor:                        
             soft_output = nn.functional.softmax(output.clone()*self.beta, dim=-1) 
-            if trial_index == 0 and time_step == 0:
-                with open('data.txt', 'w') as f:
-                    with redirect_stdout(f):
-                        print("epoch ", epoch, ", trial ", trial_index+1)
-                        print("z: ", output, "\nsoft_output: ", soft_output)
-            else:
-                with open('data.txt', 'a') as f:
-                    with redirect_stdout(f):
-                        print("epoch ", epoch, ", trial ", trial_index+1)
-                        print("z: ", output, "\nsoft_output: ", soft_output)
             if return_dynamics:
                 #print(soft_output)
                 return soft_output, trajectories

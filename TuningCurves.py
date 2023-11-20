@@ -394,67 +394,81 @@ def critic_tuning_curves(timeav_values, overall_values):
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 
-def neurons_population(X, Y, network, label):
+def neurons_population(Xa, Xc, Y, network, label):
     
-    saving_path = "neurons_population/"+label+"/"+network+" network/"
+    saving_path = "neurons_population/"+label+"/"
     if not os.path.exists(saving_path):
         os.makedirs(saving_path)
     
-    Y = np.asarray(Y)
+    X_col = [Xa, Xc]
+    Y_original = copy.deepcopy(np.asarray(Y))
+
+    list_average = []
+    list_std = []
+    list_dcs = []
     
-    indices = np.argsort(Y, kind='mergesort')
-    Y = Y[indices]
-    frates = X[indices]
-
-    split_indices = np.where(Y[:-1] != Y[1:])[0] + 1
-    split_Y = np.split(Y, split_indices)
-    split_frates = np.split(frates, split_indices)
-    
-    averages = np.zeros((128,2))
-    stds = np.zeros((128,2))
-    dcs = np.zeros(128)
-
-    colors = ["red", "green"]
-
-    for i in range(128):
+    for net in range(2):
         
-        plt.figure(figsize=(6,4))
-    
-        for j in range(len(split_frates)):
-            average = np.mean(split_frates[j][:,i])
-            std = np.std(split_frates[j][:,i])
-            plt.hist(split_frates[j][:,i], label="%i" %(split_Y[j][0]), alpha=0.7, color=colors[j])
-            plt.hlines((j+1)*10, average - 2*std / 2, average + 2*std / 2, color="dark"+colors[j])
-            plt.axvline(average, linewidth=2, color="dark"+colors[j])
-            #plt.text(j, j, "$\mu$: %f\n$\sigma$: %f" %(average, std))
-            averages[i,j] = average
-            stds[i,j] = std
-        plt.title("neuron %i - %s network" %(i+1, network), size=20)           
-        plt.tick_params(axis='x', labelsize=15)
-        plt.tick_params(axis='y', labelsize=15)
-        plt.xlabel("firing rate", size=15)
-        plt.ylabel("occurrences", size=15)
-        plt.legend(fontsize=15, loc="upper right")
-        plt.savefig(saving_path+"neuron "+str(i))
-        plt.close()
+        X = np.asarray(X_col[net])
+        Y = Y_original
+        
+        print(X.shape)
 
-        if averages[i,0] == 0 and averages[i,1] == 0:
-            dcs[i] = 0
-        else:
-            dcs[i] = (averages[i,0]-averages[i,1]) / (stds[i,0]+stds[i,1])
-    
+        indices = np.argsort(Y, kind='mergesort')
+        Y = Y[indices]
+        frates = X[indices]
+
+        split_indices = np.where(Y[:-1] != Y[1:])[0] + 1
+        split_Y = np.split(Y, split_indices)
+        split_frates = np.split(frates, split_indices)
+
+        averages = np.zeros((128,2))
+        stds = np.zeros((128,2))
+        dcs = np.zeros(128)
+
+        colors = ["red", "green"]
+
+        for i in range(128):
+
+            plt.figure(figsize=(6,4))
+
+            for j in range(len(split_frates)):
+                average = np.mean(split_frates[j][:,i])
+                std = np.std(split_frates[j][:,i])
+                plt.hist(split_frates[j][:,i], label="%i" %(split_Y[j][0]), alpha=0.7, color=colors[j])
+                plt.hlines((j+1)*10, average - 2*std / 2, average + 2*std / 2, color="dark"+colors[j])
+                plt.axvline(average, linewidth=2, color="dark"+colors[j])
+                #plt.text(j, j, "$\mu$: %f\n$\sigma$: %f" %(average, std))
+                averages[i,j] = average
+                stds[i,j] = std
+            plt.title("neuron %i - %s network" %(i+1, network), size=20)           
+            plt.tick_params(axis='x', labelsize=15)
+            plt.tick_params(axis='y', labelsize=15)
+            plt.xlabel("firing rate", size=15)
+            plt.ylabel("occurrences", size=15)
+            plt.legend(fontsize=15, loc="upper right")
+            plt.savefig(saving_path+"neuron "+str(i))
+            plt.close()
+
+            if averages[i,0] == 0 and averages[i,1] == 0:
+                dcs[i] = 0
+            else:
+                dcs[i] = (averages[i,0]-averages[i,1]) / (stds[i,0]+stds[i,1])
+        df = pd.DataFrame(data={'':dcs})
+        display(df)
+        df = df.sort_values(by='')
+        display(df)
+        dcs = np.sort(dcs)
+                
     #nan_mask = np.isnan(dcs)
     #dcs[nan_mask] = -7
     array1_list = averages.tolist()
     array2_list = stds.tolist()
     array3_list = dcs.tolist()
-    
-    
     data = {
         "averages": array1_list,
         "stds": array2_list,
         "dcs": array3_list
     }
-    
     with open(saving_path+'neurons_population.json', 'w') as json_file:
         json.dump(data, json_file)    

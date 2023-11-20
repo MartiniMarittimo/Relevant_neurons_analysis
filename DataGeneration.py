@@ -3,6 +3,7 @@ sys.path.append('../')
 import os
 
 import numpy as np
+import torch
 from sklearn import svm
 from sklearn.linear_model import Perceptron
 import copy
@@ -18,7 +19,7 @@ import json
 import Reinforce as rln
 
 
-def small_dataset_gen(iterations):
+def small_dataset_gen(iterations, shuffle_option=False, supervised_option=False):
     
     input_values = np.array([1, 2, 3])
     input_probabilities = np.array([0.25, 0.5, 0.75])
@@ -46,6 +47,26 @@ def small_dataset_gen(iterations):
                     reinforce = rln.REINFORCE(name_load_actor="models/RL_actor_network_good.pt",
                                               name_load_critic="models/RL_critic_network_good.pt",
                                               v1s=v1_array, p1s=p1_array, v2s=v2_array, p2s=p2_array)
+                    if shuffle_option == True:
+                        wi = reinforce.critic_network.wi.clone().detach()
+                        rows, columns = wi.size()
+                        rows_indices = torch.randperm(rows)
+                        columns_indices = torch.randperm(columns)
+                        wi = wi[rows_indices, :]
+                        wi = wi[:, columns_indices]
+                        reinforce.critic_network.wi.data.copy_(wi)
+                        
+                        wrec = reinforce.critic_network.wrec.clone().detach()
+                        rows, columns = wrec.size()
+                        rows_indices = torch.randperm(rows)
+                        columns_indices = torch.randperm(columns)
+                        wrec = wrec[rows_indices, :]
+                        wrec = wrec[:, columns_indices]
+                        reinforce.critic_network.wrec.data.copy_(wrec)
+                        
+                    if supervised_option == True:
+                        reinforce.actor_network.load_state_dict(torch.load("models/SL_actor_network.pt", map_location=torch.device('cpu')))
+
     
                     observations, rewards, actions,\
                     log_action_probs, entropies, values,\
@@ -119,8 +140,15 @@ def small_dataset_gen(iterations):
         "timeav_values": array9_list
     }
     
-    with open('small_dataset.json', 'w') as json_file:
-        json.dump(data, json_file)
+    if shuffle_option == True:
+        with open('small_shuffled_dataset.json', 'w') as json_file:
+            json.dump(data, json_file)
+    elif supervised_option == True:
+        with open('small_supervised_dataset.json', 'w') as json_file:
+            json.dump(data, json_file)
+    else: 
+        with open('small_dataset.json', 'w') as json_file:
+            json.dump(data, json_file)
 
 #############################################################################################################
 #============================================================================================================    
