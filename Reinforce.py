@@ -144,11 +144,14 @@ class REINFORCE:
         
         h0_actor = torch.zeros(self.hidden_size, dtype=torch.float64, device=device)
         h0_critic = torch.zeros(self.hidden_size, dtype=torch.float64, device=device)
+        
+        here = 0
 
         while trial_index < n_trs: #ciclo su tutti i time-step in fila di tutti gli n_trs trials
             
             time_step += 1
-
+            here += 1
+            
             ob, rwd, done, info = self.task.step(action=action)
             observations.append(ob)
             rewards.append(rwd)
@@ -166,8 +169,11 @@ class REINFORCE:
             if pip < 1:
                 action = np.random.choice(np.arange(len(p)), p=p) # 0, 1, 2: fix, right, left
             else: 
-                action = np.random.choice(np.arange(len(p)), p=np.array([1/3, 1/3, 1/3])) 
+                action = np.random.choice(np.arange(len(p)), p=np.array([1/3, 1/3, 1/3]))             
+            #if 5 <= here and here <= 20:
+            #    action = 1
             actions.append(action)             
+
             if action == 0:
                 self.actions_t[0] = 1
             elif action == 1:
@@ -194,6 +200,8 @@ class REINFORCE:
             h0_critic = trajs_critic
 
             if info["new_trial"]:
+                
+                here = 0
                 
                 pp = action_probs[0][0].clone()
                 p_r = pp[1] / (pp[1] + pp[2])

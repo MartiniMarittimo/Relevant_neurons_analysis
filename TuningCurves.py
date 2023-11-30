@@ -49,22 +49,22 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         
     x_values = np.zeros(stimuli_rid.shape[0])
             
-    if network == "actor":
+    if network == "ACTOR":
         color = "purple"
     else:
         color = "green"
     
-    if label == "ACTIONS" or label == "ACTIONS":
+    if label == "ACTIONS" or label == "ACTIONS_random":
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1] - stimuli_rid[i][2]*stimuli_rid[i][3]
         x_label = "v1p1-v2p2"
-        saving_path = "tuning_curves/actions/"
+        saving_path = "tuning_curves/"+label+"/"
         if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-        saving_path = "tuning_curves/actions/"+network+" network.png"
+        saving_path = "tuning_curves/"+label+"/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+"' values in the "+network+" network"
-        if label == "ACTIONS":
+        if label == "ACTIONS_random":
             color = "black"
             saving_path = "tuning_curves/actions/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
@@ -76,12 +76,11 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1]
         x_label = "v1p1"
-        saving_path = "tuning_curves/right_values/"
+        saving_path = "tuning_curves/"+label+"/"
         if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-        saving_path = "tuning_curves/right_values/"+network+" network.png"
-        title = "Firing rates of the most relevant neurons\nencoding for "+\
-                label+" in the "+network+" network"
+        saving_path = "tuning_curves/"+label+"/"+network+" network.png"
+        title = "Firing rates of the most relevant neurons\nencoding for "+label+" in the "+network+" network"
         if label == "RIGHT VALUES_random":
             color = "black"
             saving_path = "tuning_curves/right_values/"+network+" network - random.png"
@@ -94,10 +93,10 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][2]*stimuli_rid[i][3]
         x_label = "v2p2"
-        saving_path = "tuning_curves/left_values/"
+        saving_path = "tuning_curves/"+label+"/"
         if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-        saving_path = "tuning_curves/left_values/"+network+" network.png"
+        saving_path = "tuning_curves/"+label+"/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+" in the "+network+" network"
         if label == "LEFT VALUES_random":
@@ -112,15 +111,15 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         for i in range(len(x_values)):
             x_values[i] = np.max((stimuli_rid[i][0]*stimuli_rid[i][1], stimuli_rid[i][2]*stimuli_rid[i][3]))
         x_label = "max(v1p1, v2p2)"
-        saving_path = "tuning_curves/global_values/"
+        saving_path = "tuning_curves/"+label+"/"
         if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-        saving_path = "tuning_curves/global_values/"+network+" network.png"
+        saving_path = "tuning_curves/"+label+"/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+" in the "+network+" network"
         if label == "GLOBAL VALUES_random":
             color = "black"
-            saving_path = "tuning_curves/global_values/"+network+" network - random.png"
+            saving_path = "tuning_curves/"+label+"/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
                     " random neurons\nsorted by global_values in the "+network+" network"
      
@@ -394,7 +393,7 @@ def critic_tuning_curves(timeav_values, overall_values):
 #============================================================================================================    
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
 
-def neurons_population(Xa, Xc, Y, network, label):
+def neurons_population(Xa, Xc, Y, label):
     
     saving_path = "neurons_population/"+label+"/"
     if not os.path.exists(saving_path):
@@ -403,17 +402,20 @@ def neurons_population(Xa, Xc, Y, network, label):
     X_col = [Xa, Xc]
     Y_original = copy.deepcopy(np.asarray(Y))
 
-    list_average = []
-    list_std = []
-    list_dcs = []
+    dcs_final = np.zeros((128,2))
+
+    network = "network"
     
     for net in range(2):
         
+        if net == 0:
+            network = "actor"
+        elif net == 1: 
+            network = "critic"
+            
         X = np.asarray(X_col[net])
         Y = Y_original
         
-        print(X.shape)
-
         indices = np.argsort(Y, kind='mergesort')
         Y = Y[indices]
         frates = X[indices]
@@ -452,23 +454,27 @@ def neurons_population(Xa, Xc, Y, network, label):
 
             if averages[i,0] == 0 and averages[i,1] == 0:
                 dcs[i] = 0
+                dcs_final[i,net] = 0
             else:
                 dcs[i] = (averages[i,0]-averages[i,1]) / (stds[i,0]+stds[i,1])
-        df = pd.DataFrame(data={'':dcs})
-        display(df)
-        df = df.sort_values(by='')
-        display(df)
-        dcs = np.sort(dcs)
+                dcs_final[i,net] = (averages[i,0]-averages[i,1]) / (stds[i,0]+stds[i,1])
+        
+        #df = pd.DataFrame(data={'':dcs})
+        #display(df)
+        #df = df.sort_values(by='')
+        #display(df)
                 
-    #nan_mask = np.isnan(dcs)
-    #dcs[nan_mask] = -7
-    array1_list = averages.tolist()
-    array2_list = stds.tolist()
-    array3_list = dcs.tolist()
-    data = {
-        "averages": array1_list,
-        "stds": array2_list,
-        "dcs": array3_list
-    }
-    with open(saving_path+'neurons_population.json', 'w') as json_file:
-        json.dump(data, json_file)    
+        #nan_mask = np.isnan(dcs)
+        #dcs[nan_mask] = -7
+        array1_list = averages.tolist()
+        array2_list = stds.tolist()
+        array3_list = dcs.tolist()
+        array4_list = dcs_final.tolist()
+        data = {
+            "averages": array1_list,
+            "stds": array2_list,
+            "dcs": array3_list,
+            "dcs_final": array4_list
+        }
+        with open(saving_path+'neurons_population_'+network+'.json', 'w') as json_file:
+            json.dump(data, json_file)    

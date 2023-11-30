@@ -494,30 +494,29 @@ def rel_neurons(X, Y, model, C, network, label, noise_mag, size):
         relevant_neurons = [pair[1] for pair in sorted_pairs]
         relevant_neurons.reverse()
         relevant_neurons = relevant_neurons[:relevant_size]
+        print(relevant_neurons)
         sorted_pairs = sorted(zip(relevant_neurons_values_abs, relevant_neurons_values))
         relevant_neurons_values = [pair[1] for pair in sorted_pairs]
         relevant_neurons_values.reverse()
         relevant_neurons_values = relevant_neurons_values[:relevant_size]
-        print(relevant_neurons)
         #print(relevant_neurons_values)
         
         many_rel_neurons.append(relevant_neurons)
         many_rel_values.append(w[0,:])
     
-    #many_rel_neurons = np.concatenate(many_rel_neurons)
-    #value_counts = np.bincount(many_rel_neurons)
-    #most_common_indices = np.argsort(value_counts)[-10:][::-1]
-    #relevant_neurons = most_common_indices[:10]
     
-    many_rel_neurons = np.array(many_rel_neurons)
-    most_common_values = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=many_rel_neurons)
-    used_values = set()
-    most_common_values = [next_most_common if (next_most_common := np.argsort(np.bincount(many_rel_neurons[:, i]))[-2]) in used_values else (used_values.add(next_most_common), most_common_values[i])[1] for i in range(len(most_common_values))]
-
-    
-    many_rel_values = np.array(many_rel_values)
-    many_rel_values = np.mean(many_rel_values, axis=0)
-    relevant_weights = many_rel_values[relevant_neurons]
+    #many_rel_neurons = np.array(many_rel_neurons)
+    #many_rel_neurons = many_rel_neurons.flatten()
+    #unique_elements, element_counts = np.unique(many_rel_neurons, return_counts=True)
+    #sorted_indices = np.argsort(element_counts)[::-1]
+    #sorted_elements = unique_elements[sorted_indices]
+    #most_common_values = sorted_elements[:10]
+    #
+    #print("most_common", most_common_values)
+    #
+    #many_rel_values = np.array(many_rel_values)
+    #many_rel_values = np.mean(many_rel_values, axis=0)
+    #relevant_weights = many_rel_values[most_common_values]
     
     check = True
     random_neurons = np.zeros(relevant_size)
@@ -525,10 +524,12 @@ def rel_neurons(X, Y, model, C, network, label, noise_mag, size):
         random_neurons = np.random.randint(0, 128, 10)
         bool_array = np.isin(random_neurons, relevant_neurons)
         check = any(bool_array)
-    random_weights = many_rel_values[random_neurons]
+    random_weights = w[0,:][random_neurons]
     
     array1_list = np.asarray(relevant_neurons).tolist()
-    array2_list = np.asarray(relevant_weights).tolist()
+    array2_list = np.asarray(relevant_neurons_values).tolist()
+    #array1_list = np.asarray(most_common_values).tolist()
+    #array2_list = np.asarray(relevant_weights).tolist()
     array3_list = random_neurons.tolist()
     array4_list = random_weights.tolist()
     
