@@ -18,7 +18,7 @@ import json
 import Reinforce as rln
 
 
-def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label):
+def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label, size):
     
     #frates = X.T   
     #frates_rid = frates[relevant_neurons]
@@ -58,15 +58,15 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1] - stimuli_rid[i][2]*stimuli_rid[i][3]
         x_label = "v1p1-v2p2"
-        saving_path = "tuning_curves/"+label+"/"
+        saving_path = "tuning_curves_"+size+"/"+label+"/"
         if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-        saving_path = "tuning_curves/"+label+"/"+network+" network.png"
+        saving_path = "tuning_curves_"+size+"/"+label+"/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+"' values in the "+network+" network"
         if label == "ACTIONS_random":
             color = "black"
-            saving_path = "tuning_curves/actions/"+network+" network - random.png"
+            saving_path = "tuning_curves_"+size+"/actions/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
                     " random neurons\nsorted by actions' values in the "+network+" network"
    
@@ -76,14 +76,14 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][0]*stimuli_rid[i][1]
         x_label = "v1p1"
-        saving_path = "tuning_curves/"+label+"/"
+        saving_path = "tuning_curves_"+size+"/"+label+"/"
         if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-        saving_path = "tuning_curves/"+label+"/"+network+" network.png"
+        saving_path = "tuning_curves_"+size+"/"+label+"/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+label+" in the "+network+" network"
         if label == "RIGHT VALUES_random":
             color = "black"
-            saving_path = "tuning_curves/right_values/"+network+" network - random.png"
+            saving_path = "tuning_curves_"+size+"/right_values/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
                     " random neurons\nsorted by right_values in the "+network+" network"
     
@@ -93,15 +93,15 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         for i in range(len(x_values)):
             x_values[i] = stimuli_rid[i][2]*stimuli_rid[i][3]
         x_label = "v2p2"
-        saving_path = "tuning_curves/"+label+"/"
+        saving_path = "tuning_curves_"+size+"/"+label+"/"
         if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-        saving_path = "tuning_curves/"+label+"/"+network+" network.png"
+        saving_path = "tuning_curves_"+size+"/"+label+"/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+" in the "+network+" network"
         if label == "LEFT VALUES_random":
             color = "black"
-            saving_path = "tuning_curves/left_values/"+network+" network - random.png"
+            saving_path = "tuning_curves_"+size+"/left_values/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
                     " random neurons\nsorted by left_values in the "+network+" network"
                 
@@ -111,15 +111,15 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
         for i in range(len(x_values)):
             x_values[i] = np.max((stimuli_rid[i][0]*stimuli_rid[i][1], stimuli_rid[i][2]*stimuli_rid[i][3]))
         x_label = "max(v1p1, v2p2)"
-        saving_path = "tuning_curves/"+label+"/"
+        saving_path = "tuning_curves_"+size+"/"+label+"/"
         if not os.path.exists(saving_path):
             os.makedirs(saving_path)
-        saving_path = "tuning_curves/"+label+"/"+network+" network.png"
+        saving_path = "tuning_curves_"+size+"/"+label+"/"+network+" network.png"
         title = "Firing rates of the most relevant neurons\nencoding for "+\
                 label+" in the "+network+" network"
         if label == "GLOBAL VALUES_random":
             color = "black"
-            saving_path = "tuning_curves/"+label+"/"+network+" network - random.png"
+            saving_path = "tuning_curves_"+size+"/"+label+"/"+network+" network - random.png"
             title = "Firing rates of "+str(len(relevant_neurons))+\
                     " random neurons\nsorted by global_values in the "+network+" network"
      
@@ -189,11 +189,11 @@ def tuning_curves(relevant_neurons, relevant_weights, X, stimuli, network, label
     plt.ylabel("firing rate", size=15)
     
     if label[-7:] != "_random":
-        plt.savefig("tuning_curves/"+label+"/"+network+" network_LinComb.png")
+        plt.savefig("tuning_curves_"+size+"/"+label+"/"+network+" network_LinComb.png")
 
     if label[-7:] == "_random":
         label = label[:-7]
-        plt.savefig("tuning_curves/"+label+"/"+network+" network - random_LinComb.png")        
+        plt.savefig("tuning_curves_"+size+"/"+label+"/"+network+" network - random_LinComb.png")        
     
 #############################################################################################################
 #============================================================================================================    

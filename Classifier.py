@@ -463,7 +463,8 @@ def rel_neurons(X, Y, model, C, network, label, noise_mag, size):
         if model=='perceptron':
             clf = Perceptron(tol=1e-3, random_state=0)
         elif model == 'perceptronL1':
-            clf = Perceptron(tol=1e-3, random_state=0, penalty='l1', alpha=C_perc)
+            clf = Perceptron(tol=1e-5, random_state=0, penalty='l1', alpha=C_perc,\
+                             max_iter=10000, n_iter_no_change=100)
         elif model == 'svm':
             clf = svm.LinearSVC(penalty='l1', C=C_svm, dual=False, max_iter=1000)
 
